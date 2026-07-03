@@ -252,3 +252,66 @@ def test_manifest_rechaza_estado_invalido():
             estado="publicado_externo",
             timestamp="2026-07-04T01:38:00Z"
         )
+
+def test_entrada_rechaza_texto_base_vacio():
+    with pytest.raises(ValidationError):
+        EntradaContenido(
+            id_entrada="in_007",
+            tipo_entrada=TipoEntrada.AUDIO,
+            texto_base="",  # vacio
+            intencion_editorial=IntencionEditorial(
+                estado_intencion_editorial=EstadoIntencionEditorial.COMPLETA,
+                idea_central="Idea"
+            ),
+            perfil_narrativo=PerfilNarrativoReferencia(id_perfil="perfil_001"),
+            estado_privacidad=EstadoPrivacidad(sanitizado=True),
+            restricciones={}
+        )
+
+def test_entrada_rechaza_texto_base_solo_espacios():
+    with pytest.raises(ValidationError):
+        EntradaContenido(
+            id_entrada="in_008",
+            tipo_entrada=TipoEntrada.AUDIO,
+            texto_base="   ",  # solo espacios
+            intencion_editorial=IntencionEditorial(
+                estado_intencion_editorial=EstadoIntencionEditorial.COMPLETA,
+                idea_central="Idea"
+            ),
+            perfil_narrativo=PerfilNarrativoReferencia(id_perfil="perfil_001"),
+            estado_privacidad=EstadoPrivacidad(sanitizado=True),
+            restricciones={}
+        )
+
+def test_entrada_rechaza_canal_no_linkedin():
+    with pytest.raises(ValidationError):
+        EntradaContenido(
+            id_entrada="in_009",
+            tipo_entrada=TipoEntrada.AUDIO,
+            texto_base="Texto base util",
+            intencion_editorial=IntencionEditorial(
+                estado_intencion_editorial=EstadoIntencionEditorial.COMPLETA,
+                idea_central="Idea"
+            ),
+            perfil_narrativo=PerfilNarrativoReferencia(id_perfil="perfil_001"),
+            canales_destino=["x"],  # No es linkedin
+            estado_privacidad=EstadoPrivacidad(sanitizado=True),
+            restricciones={}
+        )
+
+def test_entrada_rechaza_multiples_canales():
+    with pytest.raises(ValidationError):
+        EntradaContenido(
+            id_entrada="in_010",
+            tipo_entrada=TipoEntrada.AUDIO,
+            texto_base="Texto base util",
+            intencion_editorial=IntencionEditorial(
+                estado_intencion_editorial=EstadoIntencionEditorial.COMPLETA,
+                idea_central="Idea"
+            ),
+            perfil_narrativo=PerfilNarrativoReferencia(id_perfil="perfil_001"),
+            canales_destino=["linkedin", "instagram"],  # Mas de un canal
+            estado_privacidad=EstadoPrivacidad(sanitizado=True),
+            restricciones={}
+        )
+

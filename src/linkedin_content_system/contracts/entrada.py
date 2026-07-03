@@ -53,6 +53,12 @@ class EntradaContenido(BaseModel):
 
     @model_validator(mode="after")
     def validar_insumos_suficientes(self):
+        if not self.texto_base or not self.texto_base.strip():
+            raise ValueError("texto_base siempre debe tener contenido útil (no puede estar vacío ni contener solo espacios).")
+
+        if self.canales_destino != ["linkedin"]:
+            raise ValueError("canales_destino debe ser exactamente ['linkedin'].")
+
         ie = self.intencion_editorial
         if ie.estado_intencion_editorial in (EstadoIntencionEditorial.PARCIAL, EstadoIntencionEditorial.TENTATIVA):
             if not self.texto_base or not self.texto_base.strip():

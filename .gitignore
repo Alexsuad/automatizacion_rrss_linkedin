@@ -1,0 +1,49 @@
+# Entornos virtuales
+.venv/
+venv/
+env/
+
+# Cachés de Python e IDEs
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.idea/
+.vscode/
+
+# Configuración y secretos
+.env
+.env.*
+!.env.example
+secrets/
+credentials/
+credentials.json
+token.json
+
+# Bases de datos locales
+*.sqlite
+*.sqlite3
+*.db
+
+# Logs y trazas de ejecución
+logs/
+*.log
+trace/
+
+# Salidas de ejecución y evidencias locales (kits)
+output/
+outputs/
+temp/
+tmp/
+
+# Distribución y empaquetado
+build/
+dist/
+*.egg-info/
+node_modules/
+
+# Archivos comprimidos y copias de seguridad
+*.zip
+*.tar.gz
+*.bak
+*.backup

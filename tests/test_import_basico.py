@@ -1,4 +1,4 @@
-from linkedin_content_system import hello
+from linkedin_content_system import __version__
 
 def test_import_basico():
-    assert hello() == "Hello from linkedin-content-system!"
+    assert __version__ == "0.1.0"

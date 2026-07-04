@@ -21,4 +21,7 @@ from .evidencia_generacion import EvidenciaGeneracion
 from .contexto_trabajo import ContextoTrabajo
 from .compatibilidad_contexto import ResultadoCompatibilidadContexto
 from .cambio_contexto import ResultadoCambioContexto
+from .resultado_pipeline_contexto_offline import ResultadoPipelineContextoOffline
+from .evidencia_contexto_usado import EvidenciaContextoUsado
+
 

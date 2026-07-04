@@ -8,6 +8,8 @@ from .construir_evidencia_generacion import construir_evidencia_generacion
 from .activar_contexto_trabajo import activar_contexto_trabajo
 from .validar_compatibilidad_contexto import validar_compatibilidad_contexto
 from .validar_cambio_contexto import validar_cambio_contexto
+from .ejecutar_pipeline_contexto_offline import ejecutar_pipeline_contexto_offline
+from .construir_evidencia_contexto_usado import construir_evidencia_contexto_usado
 
 __all__ = [
     "generar_borrador_local_desde_simulacion",
@@ -19,8 +21,11 @@ __all__ = [
     "construir_evidencia_generacion",
     "activar_contexto_trabajo",
     "validar_compatibilidad_contexto",
-    "validar_cambio_contexto"
+    "validar_cambio_contexto",
+    "ejecutar_pipeline_contexto_offline",
+    "construir_evidencia_contexto_usado"
 ]
+
 
 
 

@@ -139,5 +139,7 @@ estado_perfil_narrativo: COMPLETO | INCOMPLETO | REQUIERE_REVISION
 ```
 
 > [!NOTE]
-> **Nota sobre completitud de ejemplos:** Los perfiles narrativos provistos como ejemplos en esta documentación nunca deben considerarse completos de forma automática. Un perfil narrativo real solo puede marcarse como `COMPLETO` una vez que ha sido contrastado y validado con información y material real extraído del cliente.
+> Los perfiles de ejemplo nunca deben considerarse completos.
+> Un perfil narrativo solo puede marcarse como `COMPLETO` cuando ha sido validado con información real del cliente.
+
 

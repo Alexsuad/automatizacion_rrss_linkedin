@@ -13,7 +13,7 @@ El sistema busca resolver:
 
 ## 2. Para quién sirve
 
-El sistema está diseñado para creadores de contenido, ingenieros de IA y profesionales que necesitan automatizar la publicación de sus ideas expresadas en notas de voz directamente en LinkedIn, manteniendo control sobre el tono y asegurando la portabilidad y modularidad de la arquitectura.
+El sistema está diseñado para profesionales B2B, consultores, fundadores, perfiles técnicos, creadores expertos y equipos pequeños que necesitan convertir ideas habladas en publicaciones de LinkedIn con voz propia, control editorial y aprobación humana antes de publicar.
 
 ## 3. Producto esperado (V1)
 

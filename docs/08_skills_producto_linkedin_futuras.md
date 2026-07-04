@@ -98,10 +98,16 @@ Quedan fuera del alcance inicial de la V1 las siguientes automatizaciones:
 ---
 
 ## 6. Reglas para Crear estas Skills en el Futuro
-1.  **Gobernanza:** Ejecutar la skill `crear-skill-desde-contrato` antes de redactar cualquier especificación física `SKILL.md`.
+1.  **Gobernanza:** Ejecutar la skill `crear-skill-desde-contrato` antes de redactar cualquier especificación física `SKILL.md`. No se crea ninguna skill editorial real sin contrato individual aprobado.
 2.  **Validación de Arquitectura:** Invocar la skill `decidir-tipo-pieza-sistema-agentico` para evaluar si la funcionalidad corresponde a una skill, un script determinista Python, un gate, una regla, o un workflow.
 3.  **Control Humano:** Ninguna skill de preparación o programación de publicación puede ejecutarse sin la confirmación explícita del `gate_aprobacion_humana`.
-4.  **Alineación Editorial:** Toda skill de redacción, validación de voz o diagnóstico requiere revisión editorial/funcional y aprobación previa del equipo de Marketing/RRSS.
+4.  **Alineación Editorial:** Toda skill de redacción, validación de voz o diagnóstico requiere revisión editorial/funcional y aprobación previa del equipo de Marketing/RRSS. Las siguientes skills de producto deben requerir revisión Marketing/RRSS antes de aprobarse:
+    *   `extraer-idea-central-linkedin`
+    *   `redactar-post-linkedin`
+    *   `validar-voz-cliente`
+    *   `verificar-trazabilidad-audio-post`
+    *   `revisar-calidad-editorial-linkedin`
 5.  **Desacoplamiento:** Ninguna skill debe invocar o acoplarse directamente a librerías de proveedores externos (Gemini SDK, OpenAI SDK, ADK orquestador, LiteLLM, Faster-Whisper, Metricool API) en el dominio.
 6.  **Reutilización:** Si una necesidad del flujo puede cubrirse con una skill de gobernanza global ya provista en `.agents/skills/`, no se permite duplicar funcionalidad localmente.
 7.  **Variantes:** El alcance en V1 de variantes de redacción se limita a pruebas selectivas del hook o el CTA. No se deben generar paquetes múltiples de posts completos alternativos.
+

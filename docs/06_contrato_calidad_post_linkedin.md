@@ -83,3 +83,21 @@ diagnostico_editorial:
 *   **FAIL:** Contiene algún bloqueo crítico o no cumple la idea central básica. Debe corregirse obligatoriamente en el origen.
 *   **BLOQUEADO:** Detiene el flujo técnico ante la falta de metadatos mínimos, presencia de bloqueos críticos o falta de gate humano.
 
+
+## Señales rápidas de rechazo editorial
+
+Marcar `WARN` si:
+- el hook es débil pero corregible;
+- el CTA es genérico pero no manipulador;
+- el pilar de contenido no está claro;
+- el post es publicable, pero suena poco específico.
+
+Marcar `FAIL` si:
+- el post inventa experiencia personal;
+- usa cifras o resultados sin fuente;
+- empuja engagement artificial;
+- contradice el perfil narrativo;
+- contiene PII, secretos o datos sensibles;
+- no se puede explicar qué idea del audio originó el post.
+
+

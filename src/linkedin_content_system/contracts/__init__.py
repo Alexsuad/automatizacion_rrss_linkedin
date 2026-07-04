@@ -17,3 +17,8 @@ from .intencion_editorial_clasificada import IntencionEditorialClasificada, Tipo
 from .diagnostico_base_editorial import DiagnosticoBaseEditorial
 from .validacion_aprobacion_humana import DecisionAprobacionHumana, ResultadoValidacionAprobacionHumana
 from .evidencia_generacion import EvidenciaGeneracion
+
+from .contexto_trabajo import ContextoTrabajo
+from .compatibilidad_contexto import ResultadoCompatibilidadContexto
+from .cambio_contexto import ResultadoCambioContexto
+

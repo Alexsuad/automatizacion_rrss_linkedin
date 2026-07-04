@@ -11,10 +11,14 @@ class LocalDraftPublisher:
         self.clock = clock
 
     def guardar(self, salida: SalidaLocalDraft, id_entrada: str) -> ManifestEvidencia:
+        if not id_entrada or not id_entrada.strip():
+            raise ValueError("id_entrada inválido: no puede estar vacío.")
+
         # 1. Validar id_entrada contra path traversal
         for char in ("/", "\\", "..", ":"):
             if char in id_entrada:
                 raise ValueError(f"id_entrada inválido: contiene caracteres prohibidos '{char}'")
+
 
         # 2. Validar que la salida sea segura localmente (PII, secretos, rutas locales, aprobación)
         validar_salida_localdraft_segura(salida)
@@ -31,6 +35,7 @@ class LocalDraftPublisher:
         # 4. Definir rutas relativas/ficticias
         post_path = os.path.join(target_dir, "post.md")
         diag_path = os.path.join(target_dir, "diagnostico.json")
+        salida_path = os.path.join(target_dir, "salida_v1.json")
         manifest_path = os.path.join(target_dir, "manifest.json")
 
         # 5. Escribir archivos físicos
@@ -39,6 +44,9 @@ class LocalDraftPublisher:
 
         with open(diag_path, "w", encoding="utf-8") as f:
             json.dump(salida.diagnostico_editorial.model_dump(), f, indent=2, ensure_ascii=False)
+
+        with open(salida_path, "w", encoding="utf-8") as f:
+            json.dump(salida.model_dump(), f, indent=2, ensure_ascii=False)
 
         # 6. Construir ManifestEvidencia
         timestamp = self.clock() if self.clock else datetime.datetime.now(datetime.timezone.utc).isoformat()
@@ -49,6 +57,7 @@ class LocalDraftPublisher:
             archivos_generados=[
                 f"localdraft_{id_entrada}/post.md",
                 f"localdraft_{id_entrada}/diagnostico.json",
+                f"localdraft_{id_entrada}/salida_v1.json",
                 f"localdraft_{id_entrada}/manifest.json"
             ],
             estado=EstadoEvidencia.GUARDADO_LOCAL,

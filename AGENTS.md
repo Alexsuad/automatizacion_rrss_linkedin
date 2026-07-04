@@ -2,7 +2,8 @@
 
 ## 1. Identidad y Estado del Proyecto
 * **Identidad:** Sistema V1 para convertir audio en posts de LinkedIn con revisión de calidad, aprobación humana (gate), adaptadores de publicación y evidencia local.
-* **Estado actual:** Planeación pre-código. Prohibido implementar código sin autorización explícita.
+* **Estado actual:** Implementación local inicial offline (Fases 0–5 cerradas). Prohibido avanzar a LLM, ADK runtime, Metricool, Whisper, Google Drive o nuevas features sin auditoría y aprobación explícita.
+
 * **Alcance del documento:** `AGENTS.md` no reemplaza contratos, ADR, skills, gates ni workflows; solo fija el marco operativo global.
 * **Política antes que código:** Primero contrato → luego gate → luego script → luego código.
 

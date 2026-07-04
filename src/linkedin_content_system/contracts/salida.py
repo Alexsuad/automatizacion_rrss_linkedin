@@ -9,6 +9,10 @@ class EstadoAprobacion(str, Enum):
     RECHAZADO = "rechazado"
     REQUIERE_AJUSTES = "requiere_ajustes"
 
+class TipoAprobacion(str, Enum):
+    SIMPLE = "simple"
+    REFORZADA = "reforzada"
+
 class ModoPublicacion(str, Enum):
     DRY_RUN = "dry_run"
 
@@ -26,6 +30,9 @@ class AprobacionHumana(BaseModel):
     aprobado_por: Optional[str] = None
     fecha_aprobacion: Optional[str] = None
     comentarios: Optional[str] = None
+    tipo_aprobacion: TipoAprobacion = TipoAprobacion.SIMPLE
+    revision_reforzada_requerida: bool = False
+    motivo_revision_reforzada: Optional[str] = None
 
     @model_validator(mode="after")
     def validar_aprobacion(self):

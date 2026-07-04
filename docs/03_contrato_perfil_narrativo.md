@@ -20,7 +20,8 @@ Cada perfil narrativo se almacena localmente en JSON o YAML y debe seguir la sig
   "id_perfil": "ejemplo_perfil_narrativo",
   "autor": "Nombre del Creador",
   "plataforma": "linkedin",
-  "estado_perfil_narrativo": "COMPLETO",
+  "estado_perfil_narrativo": "REQUIERE_REVISION",
+
   "voz_marca": {
     "tono_base": {
       "descripcion": "Ej: Analítico pero directo, enfocado en metodología práctica.",
@@ -136,3 +137,7 @@ Si el perfil no permite responder estas preguntas, no debe usarse para la genera
 ```yaml
 estado_perfil_narrativo: COMPLETO | INCOMPLETO | REQUIERE_REVISION
 ```
+
+> [!NOTE]
+> **Nota sobre completitud de ejemplos:** Los perfiles narrativos provistos como ejemplos en esta documentación nunca deben considerarse completos de forma automática. Un perfil narrativo real solo puede marcarse como `COMPLETO` una vez que ha sido contrastado y validado con información y material real extraído del cliente.
+

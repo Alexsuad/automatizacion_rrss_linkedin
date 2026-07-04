@@ -53,10 +53,12 @@ def test_localdraft_crea_directorio_y_archivos(tmp_path, salida_valida):
     # Verificar archivos físicos
     post_file = dir_path / "post.md"
     diag_file = dir_path / "diagnostico.json"
+    salida_file = dir_path / "salida_v1.json"
     manifest_file = dir_path / "manifest.json"
 
     assert post_file.exists()
     assert diag_file.exists()
+    assert salida_file.exists()
     assert manifest_file.exists()
 
     # Verificar contenido de post.md
@@ -68,6 +70,8 @@ def test_localdraft_crea_directorio_y_archivos(tmp_path, salida_valida):
         data = json.load(f)
         assert data["id_entrada"] == "101"
         assert data["id_evidencia"] == "ev_101"
+        assert f"localdraft_101/salida_v1.json" in data["archivos_generados"]
+
 
 def test_localdraft_coincidencia_manifest(tmp_path, salida_valida):
     publisher = LocalDraftPublisher(base_dir=str(tmp_path))
@@ -159,3 +163,11 @@ def test_localdraft_no_escribe_fuera_de_base_dir(tmp_path, salida_valida):
     publisher = LocalDraftPublisher(base_dir=str(tmp_path))
     with pytest.raises(ValueError):
         publisher.guardar(salida_valida, id_entrada="..")
+
+def test_localdraft_bloquea_id_entrada_vacio(tmp_path, salida_valida):
+    publisher = LocalDraftPublisher(base_dir=str(tmp_path))
+    with pytest.raises(ValueError, match="no puede estar vacío"):
+        publisher.guardar(salida_valida, id_entrada="")
+    with pytest.raises(ValueError, match="no puede estar vacío"):
+        publisher.guardar(salida_valida, id_entrada="   ")
+

@@ -315,3 +315,55 @@ def test_entrada_rechaza_multiples_canales():
             restricciones={}
         )
 
+def test_bloqueos_criticos_obliga_estado_revision_fail():
+    from linkedin_content_system.contracts import BloqueoCritico, TipoBloqueoCritico
+    # Valido si estado_revision es FAIL y hay bloqueos
+    diag = DiagnosticoEditorial(
+        claridad_idea=EstadoRevision.FAIL,
+        audiencia=EstadoRevision.PASS,
+        hook=EstadoRevision.PASS,
+        voz_cliente=EstadoRevision.PASS,
+        autenticidad=EstadoRevision.PASS,
+        cta=EstadoRevision.PASS,
+        compliance=EstadoRevision.PASS,
+        riesgo_generico=NivelRiesgoGenerico.BAJO,
+        estado_revision=EstadoRevision.FAIL,
+        bloqueos_criticos=[
+            BloqueoCritico(tipo=TipoBloqueoCritico.PII, descripcion="Email detectado")
+        ]
+    )
+    assert diag.estado_revision == EstadoRevision.FAIL
+
+def test_bloqueos_criticos_con_estado_revision_incompatible_lanza_error():
+    from linkedin_content_system.contracts import BloqueoCritico, TipoBloqueoCritico
+    # Invalido si hay bloqueos pero estado_revision es PASS o WARN (lanzar ValueError / ValidationError)
+    with pytest.raises(ValidationError):
+        DiagnosticoEditorial(
+            claridad_idea=EstadoRevision.PASS,
+            audiencia=EstadoRevision.PASS,
+            hook=EstadoRevision.PASS,
+            voz_cliente=EstadoRevision.PASS,
+            autenticidad=EstadoRevision.PASS,
+            cta=EstadoRevision.PASS,
+            compliance=EstadoRevision.PASS,
+            riesgo_generico=NivelRiesgoGenerico.BAJO,
+            estado_revision=EstadoRevision.PASS,
+            bloqueos_criticos=[
+                BloqueoCritico(tipo=TipoBloqueoCritico.PII, descripcion="Email detectado")
+            ]
+        )
+
+def test_aprobacion_reforzada_atributos():
+    from linkedin_content_system.contracts import TipoAprobacion
+    aprob = AprobacionHumana(
+        estado=EstadoAprobacion.APROBADO,
+        aprobado_por="Alex",
+        fecha_aprobacion="2026-07-04T12:00:00Z",
+        tipo_aprobacion=TipoAprobacion.REFORZADA,
+        revision_reforzada_requerida=True,
+        motivo_revision_reforzada="Riesgo menor aceptado"
+    )
+    assert aprob.tipo_aprobacion == TipoAprobacion.REFORZADA
+    assert aprob.revision_reforzada_requerida is True
+
+

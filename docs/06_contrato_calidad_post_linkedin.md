@@ -67,15 +67,19 @@ diagnostico_editorial:
   cta: PASS | WARN | FAIL
   compliance: PASS | WARN | FAIL
   riesgo_generico: bajo | medio | alto
-  estado_revision: PASS | WARN | FAIL  # Será FAIL obligatorio si hay algún FAIL crítico
+  estado_revision: PASS | WARN | FAIL  # Será FAIL obligatorio si hay algún bloqueo crítico
   motivo: "Explicación breve del veredicto"
   ajustes_recomendados: "Detalles correctivos sugeridos"
+  bloqueos_criticos:
+    - tipo: PII | SECRETO | CLAIM_SIN_FUENTE | RIESGO_REPUTACIONAL | COMPLIANCE | TRAZABILIDAD | SIN_APROBACION
+      descripcion: "Detalle del bloqueo crítico detectado"
 ```
 
 ---
 
 ## 7. Criterios de Veredicto
 *   **PASS:** Cumple el alcance, tiene idea clara, respeta la voz del autor y está libre de riesgos de compliance o PII.
-*   **WARN:** Cumple parcialmente pero tiene riesgos editoriales menores. Requiere revisión.
-*   **FAIL:** Contiene algún FAIL crítico o no cumple la idea central básica. Debe corregirse obligatoriamente en el origen.
-*   **BLOQUEADO:** Detiene el flujo técnico ante la falta de metadatos mínimos, ausencia de auditoría de PII o falta del gate humano.
+*   **WARN:** Cumple parcialmente pero tiene riesgos editoriales menores. Requiere revisión y aprobación humana reforzada.
+*   **FAIL:** Contiene algún bloqueo crítico o no cumple la idea central básica. Debe corregirse obligatoriamente en el origen.
+*   **BLOQUEADO:** Detiene el flujo técnico ante la falta de metadatos mínimos, presencia de bloqueos críticos o falta de gate humano.
+

@@ -10,27 +10,12 @@ Sirve como la estructura de datos que se guardará localmente como evidencia del
 
 ## 2. Estructura conceptual del Contrato de Salida (Kit de Salida V1)
 
-Al finalizar el proceso, el sistema guarda un archivo JSON de salida en `output/kit_<id>/salida_v1.json` con la siguiente estructura conceptual (donde se prefiere el adaptador local como ejemplo base):
+Al finalizar el proceso, el sistema guarda un archivo JSON de salida en `output/localdraft_<id_entrada>/salida_v1.json` con la siguiente estructura conceptual. Este archivo representa de forma fidedigna el modelo serializado de `SalidaLocalDraft`:
 
 ```json
 {
-  "id_proceso": "proc_lnk_001",
-  "id_entrada": "in_lnk_001",
-  "perfil_narrativo": "perfil_profesional_linkedin",
-  "fecha_procesamiento": "2026-07-03T11:15:00Z",
-  "transcripcion": {
-    "sanitizada": "Transcripción con datos personales (PII) anonimizados o removidos...",
-    "ruta_transcripcion_bruta_privada": null
-  },
-  "post_generado": {
-    "version_inicial": "Contenido del post de LinkedIn generado por el LLM...",
-    "version_aprobada": "Contenido del post de LinkedIn final, tras revisión y edición humana (si aplica)..."
-  },
-  "revision_automatica": {
-    "pasa_filtro_calidad": true,
-    "cumple_reglas_perfil": true,
-    "pii_detectada": false,
-    "comentarios_auditoria": []
+  "post": {
+    "texto": "Contenido final del post de LinkedIn generado y aprobado..."
   },
   "diagnostico_editorial": {
     "claridad_idea": "PASS",
@@ -41,28 +26,24 @@ Al finalizar el proceso, el sistema guarda un archivo JSON de salida en `output/
     "cta": "PASS",
     "compliance": "PASS",
     "riesgo_generico": "bajo",
-    "estado_revision": "PASS"
+    "estado_revision": "PASS",
+    "motivo": "El contenido cumple con la coherencia...",
+    "ajustes_recomendados": null,
+    "bloqueos_criticos": []
   },
   "aprobacion_humana": {
     "estado": "aprobado",
-    "fecha_aprobacion": "2026-07-03T11:18:22Z",
-    "comentarios_usuario": "Aprobado sin cambios adicionales"
+    "aprobado_por": "Alex Revisor",
+    "fecha_aprobacion": "2026-07-04T11:00:00Z",
+    "comentarios": "Aprobado sin cambios adicionales",
+    "tipo_aprobacion": "simple",
+    "revision_reforzada_requerida": false,
+    "motivo_revision_reforzada": null
   },
-  "recomendacion_timing": {
-    "zona_horaria": "Europe/Madrid",
-    "ventana_horaria_recomendada": "Martes de 08:30 a 10:00",
-    "justificacion_timing": "Recomendación conservadora para audiencia B2B en horario laboral local; ajustable según histórico del cliente.",
-    "excepcion_timing": "Se permite publicar fuera de ventana si coincide con un evento en vivo relevante o noticia de última hora."
-  },
-  "publicacion": {
-    "adaptador_activo": "localdraft",
-    "modo_publicacion": "dry_run",
-    "estado": "borrador_local",
-    "fecha_objetivo_sugerida": "2026-07-07T09:00:00Z",
-    "id_publicacion_externa": null,
-    "detalles_resultado": "Borrador local guardado en disco con éxito para revisión offline.",
-    "evidencia_local_path": "output/kit_001/evidencia_publicacion.json"
-  }
+  "modo_publicacion": "dry_run",
+  "adaptador_activo": "localdraft",
+  "estado": "borrador_local",
+  "fecha_objetivo_sugerida": "2026-07-07T09:00:00Z"
 }
 ```
 
@@ -71,23 +52,23 @@ Al finalizar el proceso, el sistema guarda un archivo JSON de salida en `output/
 
 ---
 
-## 3. Campos del contrato de salida
+## 3. Matriz de Publicabilidad Editorial y Gates
 
-*   `id_proceso`: Identificador del proceso de automatización.
-*   `transcripcion.sanitizada`: (Obligatoria si el flujo la necesita) Texto base una vez procesado por el filtro de PII.
-*   `transcripcion.ruta_transcripcion_bruta_privada`: (Opcional) Ruta a la transcripción en bruto. Puede ser `null` o no persistirse si la política de privacidad activa decide no almacenarla en disco.
-*   `post_generado.version_aprobada`: El texto real que fue aprobado y programado.
-*   `diagnostico_editorial`: Objeto que contiene las evaluaciones de calidad editorial (`claridad_idea`, `audiencia`, `hook`, `voz_cliente`, `autenticidad`, `cta`, `compliance`, `riesgo_generico`, `estado_revision`).
-*   `aprobacion_humana.estado`: Estado del gate (`aprobado`, `rechazado`, `pendiente`).
-*   `recomendacion_timing`: Objeto que detalla la recomendación horaria para la publicación en LinkedIn (`zona_horaria`, `ventana_horaria_recomendada`, `justificacion_timing`, `excepcion_timing`).
-*   `publicacion.adaptador_activo`: Identifica si se usó `localdraft` (adaptador principal V1) o adaptadores externos posteriores (ej: `metricool`).
-*   `publicacion.estado`: Estado de la publicación (`programado`, `borrador_local`, `dry_run`, `error`).
-*   `publicacion.id_publicacion_externa`: ID en el proveedor externo, o `null` si se publica localmente.
+La persistencia de la salida y el almacenamiento de evidencias están controlados por un gate determinista estricto que evalúa el diagnóstico editorial y la aprobación humana:
+
+*   **PASS + Aprobado (Simple):** Si `estado_revision == PASS` y la aprobación humana tiene `estado == aprobado` y `tipo_aprobacion == simple`, se permite guardar en disco localmente.
+*   **WARN + Aprobado (Reforzado):** Si `estado_revision == WARN`, el sistema bloquea cualquier intento de guardado a menos que la aprobación humana tenga `estado == aprobado` y su `tipo_aprobacion == reforzada`. Esto asegura que el revisor humano ha levantado conscientemente el warning editorial.
+*   **FAIL / Bloqueos Críticos:** Si `estado_revision == FAIL` o el diagnóstico contiene cualquier `bloqueo_critico`, el flujo se detiene de inmediato. Está estrictamente prohibido guardar como borrador local listo.
+*   **Aprobación Pendiente:** Si el estado de aprobación no es `aprobado`, no se permite la persistencia final de salida como borrador publicable.
 
 ---
 
-## 4. Evidencia local y Seguridad de logs
+## 4. Evidencia local y Seguridad
 
-*   **Evidencia Local Obligatoria:** Todos los kits de salida se almacenan en carpetas locales numeradas (`output/kit_<id>/`).
-*   **Limpieza de Datos:** Las evidencias del adaptador no deben guardar bajo ninguna circunstancia credenciales de API, tokens de autenticación ni PII sin sanitizar.
-*   **Pruebas Offline:** Por defecto, el sistema prioriza el modo `dry_run` con `localdraft` (LocalDraftPublisher), evitando cualquier llamada real a las APIs externas y permitiendo probar el flujo completo de forma offline sin coste ni riesgo operativo. La publicación real queda relegada a adaptadores posteriores una vez validada la estabilidad local.
+*   **Evidencia Local Obligatoria:** Todos los borradores exitosos se almacenan en la carpeta local `output/localdraft_<id_entrada>/` conteniendo:
+    *   `post.md`: Texto plano del post generado.
+    *   `diagnostico.json`: Datos del diagnóstico editorial.
+    *   `salida_v1.json`: Serialización completa del lote `SalidaLocalDraft`.
+    *   `manifest.json`: Manifiesto con la firma y lista de archivos generados.
+*   **Sanitización Absoluta:** No se debe escribir en disco ningún archivo (incluyendo los campos de texto libre como `motivo`, `comentarios` o `ajustes_recomendados`) que contenga datos PII, secretos, credenciales o rutas locales absolutas.
+*   **Pruebas Offline:** El sistema opera en modo `dry_run` con `localdraft` (LocalDraftPublisher), evitando cualquier llamada real a las APIs externas y garantizando un flujo 100% offline y seguro.

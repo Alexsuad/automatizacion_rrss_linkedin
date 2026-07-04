@@ -4,11 +4,7 @@ from linkedin_content_system.contracts import (
     SalidaLocalDraft, ManifestEvidencia, ModoPublicacion, AdaptadorActivo,
     EstadoSalidaLocal, EstadoEvidencia
 )
-from linkedin_content_system.validators import (
-    validar_texto_sin_pii_basica, validar_texto_sin_secretos_basicos,
-    validar_sin_rutas_locales, validar_texto_no_vacio,
-    validar_aprobacion_para_publicacion
-)
+from linkedin_content_system.validators import validar_salida_localdraft_segura
 
 def ensamblar_flujo_local_simulado(
     entrada: EntradaContenido,
@@ -16,16 +12,7 @@ def ensamblar_flujo_local_simulado(
     diagnostico: DiagnosticoEditorial,
     aprobacion: AprobacionHumana
 ) -> tuple[SalidaLocalDraft, ManifestEvidencia]:
-    # 1. Validar texto del post candidato
-    validar_texto_no_vacio(post.texto)
-    validar_texto_sin_pii_basica(post.texto)
-    validar_texto_sin_secretos_basicos(post.texto)
-    validar_sin_rutas_locales(post.texto)
-
-    # 2. Validar aprobación
-    validar_aprobacion_para_publicacion(aprobacion)
-
-    # 3. Ensamblar SalidaLocalDraft
+    # 1. Ensamblar SalidaLocalDraft
     salida = SalidaLocalDraft(
         post=post,
         diagnostico_editorial=diagnostico,
@@ -36,7 +23,10 @@ def ensamblar_flujo_local_simulado(
         fecha_objetivo_sugerida=entrada.restricciones.get("fecha_objetivo_sugerida")
     )
 
-    # 4. Ensamblar ManifestEvidencia simulado (en memoria, sin escribir archivos)
+    # 2. Validar que la salida sea completamente segura (aprobación, editorial, sanitización)
+    validar_salida_localdraft_segura(salida)
+
+    # 3. Ensamblar ManifestEvidencia simulado (en memoria, sin escribir archivos)
     manifest = ManifestEvidencia(
         id_evidencia=f"ev_{entrada.id_entrada}",
         id_entrada=entrada.id_entrada,

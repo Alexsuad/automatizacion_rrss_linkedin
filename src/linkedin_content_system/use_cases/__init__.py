@@ -1,0 +1,1 @@
+from .generar_borrador_local import generar_borrador_local_desde_simulacion

@@ -11,3 +11,5 @@ from .salida import (
     ModoPublicacion, AdaptadorActivo, EstadoSalidaLocal, TipoAprobacion
 )
 from .evidencia import ManifestEvidencia, EstadoEvidencia
+from .idea_central import IdeaCentral
+

@@ -12,4 +12,6 @@ from .salida import (
 )
 from .evidencia import ManifestEvidencia, EstadoEvidencia
 from .idea_central import IdeaCentral
+from .intencion_editorial_clasificada import IntencionEditorialClasificada, TipoIntencionEditorial
+
 

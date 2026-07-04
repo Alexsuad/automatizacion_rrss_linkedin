@@ -39,6 +39,7 @@ Flujo lógico: `audio → transcripción → intención editorial inicial → id
 * **Primera meta futura:** Pipeline local end-to-end con `LocalDraftPublisher` y evidencia local. No usar Metricool real como primera prueba.
 * **Desacoplamiento:** No acoplar el núcleo a ningún proveedor (Gemini, OpenAI, LiteLLM, Metricool, Faster-Whisper, ADK).
 * **Contexto de cliente:** Los datos del cliente deben residir fuera del core en archivos intercambiables (ej. `contexto_cliente.md`). Google Drive o Notion son sedes futuras posibles, no runtime actual.
+* **Anticontaminación:** No introducir datos reales de cliente, marca, página, campaña o documentos externos en tests, fixtures, docs generales, prompts versionados o evidencias versionadas. Antes de trabajar con contexto real debe existir un `ContextoTrabajo` activo, aislado y validado; para pruebas usar datos sintéticos, neutros y claramente falsos.
 * **Gestión del cambio:** Si cambia el cliente, voz, sector, audiencia, oferta, canal o adaptador, evaluar impacto antes de seguir.
 * **Salida final:** No exponer al usuario final prompts internos, nombres de agentes, rutas locales, logs crudos ni estructura interna.
 

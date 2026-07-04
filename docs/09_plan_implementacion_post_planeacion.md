@@ -30,6 +30,8 @@ El estado del repositorio cuenta con gobernanza documental robusta:
 
 El problema actual que resuelve este documento es la definición del mapa completo de implementación paso a paso desde el estado actual offline hasta el sistema usable final.
 
+Antes de trabajar con contexto real de cliente o fuentes externas, ejecutar Fase J.
+
 ---
 
 ## 2. Objetivo final del proyecto
@@ -132,48 +134,54 @@ Objetivo: convertir el sistema en algo más amplio y reusable.
 * **Implementación:** Adaptador de transcripción offline (Faster-Whisper local como candidato).
 * **Control:** Sanitización de PII post-transcripción, control de idioma, metadatos y trazabilidad audio → texto.
 
-### Fase J — Trazabilidad audio/texto → post
+### Fase J — Contexto de trabajo aislado / anticontaminación V0
+* **Objetivo:** Crear una frontera explícita para separar cliente, página/canal, tema, tono, campaña y contexto activo antes de usar datos reales o fuentes externas.
+* **Regla:** Ningún dato real de cliente debe entrar en tests, fixtures, docs generales, evidencias versionadas ni core reutilizable.
+* **Debe cubrir:** contexto activo; contexto prohibido; reset/cambio de contexto; prevención de mezcla cliente A / cliente B; prevención de mezcla página personal / página empresa; prevención de mezcla campaña / tema / tono; evidencia de qué contexto fue usado.
+* **No objetivos:** no conectar Google Drive todavía; no conectar Notion todavía; no crear UI; no persistir contexto real; no generar posts con datos reales; no publicar; no mezclar contexto entre clientes.
+
+### Fase K — Trazabilidad audio/texto → post
 * **Objetivo:** Comprobar sistemáticamente que el post final representa con fidelidad la idea original del autor.
 * **Control:** Detección de ideas inventadas, autoridad fingida, anécdotas inexistentes o afirmaciones sin fuente en el audio de origen.
 * **Resultado esperado:** Trazabilidad `PASS` / `WARN` / `FAIL` adjunta al diagnóstico.
 
-### Fase K — Proveedor IA real configurable
+### Fase L — Proveedor IA real configurable
 * **Objetivo:** Integrar APIs externas (OpenAI, Gemini, DeepSeek) de manera modular.
 * **Reglas:** API keys configurables mediante variables de entorno (fuera del repositorio), control de timeouts y manejo de errores de red con fallbacks de contingencia.
 * **Resultado esperado:** Adaptador de proveedor IA real acoplable al puerto de IA sin modificar el core del sistema.
 
-### Fase L — Configuración segura
+### Fase M — Configuración segura
 * **Objetivo:** Asegurar la portabilidad del entorno y evitar la fuga de credenciales.
 * **Resultado esperado:** Archivos `.env.example` robustos, exclusión estricta en `.gitignore`, validadores de configuración en el arranque del sistema y tests que comprueben la ausencia de secretos en evidencias y logs.
 
-### Fase M — Generación real de post LinkedIn
+### Fase N — Generación real de post LinkedIn
 * **Objetivo:** Conectar el proveedor IA real al pipeline para generar posts candidato basados en la idea e intención real del autor.
 
-### Fase N — Revisión y regeneración
+### Fase O — Revisión y regeneración
 * **Objetivo:** Permitir al usuario solicitar ajustes específicos al post candidato (ajustar hook, suavizar tono, acortar CTA) y mantener un historial de versiones del borrador.
 
-### Fase O — Borrador LinkedIn completo
+### Fase P — Borrador LinkedIn completo
 * **Objetivo:** Consolidar el paquete de salida final del post textual listo para publicarse.
 * **Estados:** `borrador_local`, `requiere_revision`, `rechazado_editorial`, `publicable`, `no_publicable`.
 
-### Fase P — Timing y programación sugerida
+### Fase Q — Timing y programación sugerida
 * **Objetivo:** Recomendar la mejor ventana horaria y fecha para la publicación basándose en preferencias B2B y directrices del autor.
 
-### Fase Q — Adapter Metricool dry_run
+### Fase R — Adapter Metricool dry_run
 * **Objetivo:** Preparar el payload de programación de Metricool y guardarlo localmente para auditoría física.
 * **Regla:** Bloqueo físico estricto si no hay aprobación humana previa, si el diagnóstico es `FAIL`, o ante sospecha de PII/secretos.
 
-### Fase R — Publicación/programación real controlada
+### Fase S — Publicación/programación real controlada
 * **Objetivo:** Habilitar el envío real del post programado a la API de Metricool.
 * **Requisitos:** Gate manual explícito superado, dry_run previo correcto, credenciales válidas y almacenamiento de la evidencia del ID de publicación externa en el manifest de trazabilidad.
 
-### Fase S — Recurso visual offline
+### Fase T — Recurso visual offline
 * **Objetivo:** Asociar metadatos visuales, prompts de generación de imagen o marcadores de posición sin invocar herramientas externas.
 
-### Fase T — Generación visual con proveedor externo
+### Fase U — Generación visual con proveedor externo
 * **Objetivo:** Conectar adaptadores de generación de imágenes (Canva, Higgsfield, etc.) controlando derechos de uso, estilo de marca e incorporando gate de revisión visual humana.
 
-### Fase U — Carruseles
+### Fase V — Carruseles
 * **Objetivo:** Estructurar slides (portada, desarrollo, cierre, CTA) para formatos interactivos en LinkedIn.
 
 ---
@@ -227,14 +235,15 @@ Toda fase técnica debe cerrarse con prueba proporcional, evidencia del comando 
 8. Fase G: Sistema de aprobación simple/reforzada y bloqueos.
 9. Fase H: Flujo end-to-end offline completo y pruebas de integración.
 10. Fase I: Integración de transcripción local (adaptador Whisper).
-11. Fase J: Trazabilidad semántica e inferencia.
-12. Fase K: Adaptadores para proveedores IA reales (OpenAI/Gemini/DeepSeek).
-13. Fase L: Configuración segura de credenciales y entornos (.env).
-14. Fase M: Pruebas de generación y control en vivo con IA real.
-15. Fase N: Lógica de regeneración y revisión de post.
-16. Fase O: Salida de borrador LinkedIn final.
-17. Fase P: Algoritmo de sugerencia de timing.
-18. Fase Q: Adaptador Metricool en modo dry_run.
-19. Fase R: Publicación real controlada (API y Gate humano final).
-20. Fase S, T, U: Recursos visuales y carruseles (V2 posterior).
+11. Fase J: Contexto de trabajo aislado / anticontaminación V0.
+12. Fase K: Trazabilidad semántica e inferencia.
+13. Fase L: Adaptadores para proveedores IA reales (OpenAI/Gemini/DeepSeek).
+14. Fase M: Configuración segura de credenciales y entornos (.env).
+15. Fase N: Pruebas de generación y control en vivo con IA real.
+16. Fase O: Lógica de regeneración y revisión de post.
+17. Fase P: Salida de borrador LinkedIn final.
+18. Fase Q: Algoritmo de sugerencia de timing.
+19. Fase R: Adaptador Metricool en modo dry_run.
+20. Fase S: Publicación real controlada (API y Gate humano final).
+21. Fase T, U, V: Recursos visuales y carruseles (V2 posterior).
 ```

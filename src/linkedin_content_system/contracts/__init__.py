@@ -14,4 +14,6 @@ from .evidencia import ManifestEvidencia, EstadoEvidencia
 from .idea_central import IdeaCentral
 from .intencion_editorial_clasificada import IntencionEditorialClasificada, TipoIntencionEditorial
 
-
+from .diagnostico_base_editorial import DiagnosticoBaseEditorial
+from .validacion_aprobacion_humana import DecisionAprobacionHumana, ResultadoValidacionAprobacionHumana
+from .evidencia_generacion import EvidenciaGeneracion

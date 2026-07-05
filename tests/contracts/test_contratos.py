@@ -4,7 +4,7 @@ from linkedin_content_system.contracts import (
     EntradaContenido, IntencionEditorial, PerfilNarrativoReferencia, EstadoIntencionEditorial, TipoEntrada, EstadoPrivacidad,
     DiagnosticoEditorial, EstadoRevision, NivelRiesgoGenerico,
     SalidaLocalDraft, AprobacionHumana, PostCandidato, EstadoAprobacion, ModoPublicacion, AdaptadorActivo, EstadoSalidaLocal,
-    ManifestEvidencia, EstadoEvidencia
+    ManifestEvidencia, EstadoEvidencia, BloqueoCritico, TipoBloqueoCritico
 )
 from linkedin_content_system.contracts.salida import EstadoPublicabilidad, TipoAprobacion
 
@@ -411,7 +411,6 @@ def test_entrada_rechaza_multiples_canales():
         )
 
 def test_bloqueos_criticos_obliga_estado_revision_fail():
-    from linkedin_content_system.contracts import BloqueoCritico, TipoBloqueoCritico
     # Valido si estado_revision es FAIL y hay bloqueos
     diag = DiagnosticoEditorial(
         claridad_idea=EstadoRevision.FAIL,
@@ -426,11 +425,10 @@ def test_bloqueos_criticos_obliga_estado_revision_fail():
         bloqueos_criticos=[
             BloqueoCritico(tipo=TipoBloqueoCritico.PII, descripcion="Email detectado")
         ]
-    )
+        )
     assert diag.estado_revision == EstadoRevision.FAIL
 
 def test_bloqueos_criticos_con_estado_revision_incompatible_lanza_error():
-    from linkedin_content_system.contracts import BloqueoCritico, TipoBloqueoCritico
     # Invalido si hay bloqueos pero estado_revision es PASS o WARN (lanzar ValueError / ValidationError)
     with pytest.raises(ValidationError):
         DiagnosticoEditorial(
@@ -448,6 +446,141 @@ def test_bloqueos_criticos_con_estado_revision_incompatible_lanza_error():
             ]
         )
 
+def test_diagnostico_editorial_sin_bloqueos_pass_es_valido():
+    diag = DiagnosticoEditorial(
+        claridad_idea=EstadoRevision.PASS,
+        audiencia=EstadoRevision.PASS,
+        hook=EstadoRevision.PASS,
+        voz_cliente=EstadoRevision.PASS,
+        autenticidad=EstadoRevision.PASS,
+        cta=EstadoRevision.PASS,
+        compliance=EstadoRevision.PASS,
+        riesgo_generico=NivelRiesgoGenerico.BAJO,
+        estado_revision=EstadoRevision.PASS
+    )
+    assert diag.estado_revision == EstadoRevision.PASS
+    assert diag.bloqueos_criticos == []
+
+def test_diagnostico_editorial_sin_bloqueos_warn_es_valido():
+    diag = DiagnosticoEditorial(
+        claridad_idea=EstadoRevision.WARN,
+        audiencia=EstadoRevision.PASS,
+        hook=EstadoRevision.PASS,
+        voz_cliente=EstadoRevision.PASS,
+        autenticidad=EstadoRevision.PASS,
+        cta=EstadoRevision.PASS,
+        compliance=EstadoRevision.PASS,
+        riesgo_generico=NivelRiesgoGenerico.BAJO,
+        estado_revision=EstadoRevision.WARN
+    )
+    assert diag.estado_revision == EstadoRevision.WARN
+    assert diag.bloqueos_criticos == []
+
+def test_diagnostico_editorial_con_bloqueos_fail_es_valido():
+    diag = DiagnosticoEditorial(
+        claridad_idea=EstadoRevision.FAIL,
+        audiencia=EstadoRevision.PASS,
+        hook=EstadoRevision.PASS,
+        voz_cliente=EstadoRevision.PASS,
+        autenticidad=EstadoRevision.PASS,
+        cta=EstadoRevision.PASS,
+        compliance=EstadoRevision.PASS,
+        riesgo_generico=NivelRiesgoGenerico.BAJO,
+        estado_revision=EstadoRevision.FAIL,
+        bloqueos_criticos=[
+            BloqueoCritico(tipo=TipoBloqueoCritico.PII, descripcion="Email detectado"),
+            BloqueoCritico(tipo=TipoBloqueoCritico.SECRETO, descripcion="Token en texto"),
+        ]
+    )
+    assert diag.estado_revision == EstadoRevision.FAIL
+    assert [b.tipo for b in diag.bloqueos_criticos] == [
+        TipoBloqueoCritico.PII,
+        TipoBloqueoCritico.SECRETO,
+    ]
+
+def test_diagnostico_editorial_con_bloqueos_y_estado_pass_falla():
+    with pytest.raises(ValidationError):
+        DiagnosticoEditorial(
+            claridad_idea=EstadoRevision.PASS,
+            audiencia=EstadoRevision.PASS,
+            hook=EstadoRevision.PASS,
+            voz_cliente=EstadoRevision.PASS,
+            autenticidad=EstadoRevision.PASS,
+            cta=EstadoRevision.PASS,
+            compliance=EstadoRevision.PASS,
+            riesgo_generico=NivelRiesgoGenerico.BAJO,
+            estado_revision=EstadoRevision.PASS,
+            bloqueos_criticos=[
+                BloqueoCritico(tipo=TipoBloqueoCritico.CLAIM_SIN_FUENTE, descripcion="Cifra sin respaldo")
+            ]
+        )
+
+def test_diagnostico_editorial_con_bloqueos_y_estado_warn_falla():
+    with pytest.raises(ValidationError):
+        DiagnosticoEditorial(
+            claridad_idea=EstadoRevision.WARN,
+            audiencia=EstadoRevision.PASS,
+            hook=EstadoRevision.PASS,
+            voz_cliente=EstadoRevision.PASS,
+            autenticidad=EstadoRevision.PASS,
+            cta=EstadoRevision.PASS,
+            compliance=EstadoRevision.PASS,
+            riesgo_generico=NivelRiesgoGenerico.BAJO,
+            estado_revision=EstadoRevision.WARN,
+            bloqueos_criticos=[
+                BloqueoCritico(tipo=TipoBloqueoCritico.RIESGO_REPUTACIONAL, descripcion="Riesgo alto de marca")
+            ]
+        )
+
+def test_diagnostico_editorial_serializa_todos_los_tipos_de_bloqueo():
+    diag = DiagnosticoEditorial(
+        claridad_idea=EstadoRevision.FAIL,
+        audiencia=EstadoRevision.PASS,
+        hook=EstadoRevision.PASS,
+        voz_cliente=EstadoRevision.PASS,
+        autenticidad=EstadoRevision.PASS,
+        cta=EstadoRevision.PASS,
+        compliance=EstadoRevision.PASS,
+        riesgo_generico=NivelRiesgoGenerico.BAJO,
+        estado_revision=EstadoRevision.FAIL,
+        bloqueos_criticos=[
+            BloqueoCritico(tipo=TipoBloqueoCritico.PII, descripcion="PII"),
+            BloqueoCritico(tipo=TipoBloqueoCritico.SECRETO, descripcion="SECRETO"),
+            BloqueoCritico(tipo=TipoBloqueoCritico.CLAIM_SIN_FUENTE, descripcion="CLAIM_SIN_FUENTE"),
+            BloqueoCritico(tipo=TipoBloqueoCritico.RIESGO_REPUTACIONAL, descripcion="RIESGO_REPUTACIONAL"),
+            BloqueoCritico(tipo=TipoBloqueoCritico.COMPLIANCE, descripcion="COMPLIANCE"),
+            BloqueoCritico(tipo=TipoBloqueoCritico.TRAZABILIDAD, descripcion="TRAZABILIDAD"),
+            BloqueoCritico(tipo=TipoBloqueoCritico.SIN_APROBACION, descripcion="SIN_APROBACION"),
+        ]
+    )
+    payload = diag.model_dump()
+    assert [item["tipo"] for item in payload["bloqueos_criticos"]] == [
+        "PII",
+        "SECRETO",
+        "CLAIM_SIN_FUENTE",
+        "RIESGO_REPUTACIONAL",
+        "COMPLIANCE",
+        "TRAZABILIDAD",
+        "SIN_APROBACION",
+    ]
+
+def test_diagnostico_editorial_rechaza_tipo_bloqueo_invalido():
+    with pytest.raises(ValidationError):
+        DiagnosticoEditorial(
+            claridad_idea=EstadoRevision.FAIL,
+            audiencia=EstadoRevision.PASS,
+            hook=EstadoRevision.PASS,
+            voz_cliente=EstadoRevision.PASS,
+            autenticidad=EstadoRevision.PASS,
+            cta=EstadoRevision.PASS,
+            compliance=EstadoRevision.PASS,
+            riesgo_generico=NivelRiesgoGenerico.BAJO,
+            estado_revision=EstadoRevision.FAIL,
+            bloqueos_criticos=[
+                {"tipo": "OTRO_TIPO", "descripcion": "No permitido"}
+            ]
+        )
+
 def test_aprobacion_reforzada_atributos():
     from linkedin_content_system.contracts import TipoAprobacion
     aprob = AprobacionHumana(
@@ -460,4 +593,3 @@ def test_aprobacion_reforzada_atributos():
     )
     assert aprob.tipo_aprobacion == TipoAprobacion.REFORZADA
     assert aprob.revision_reforzada_requerida is True
-

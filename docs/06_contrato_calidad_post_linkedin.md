@@ -75,6 +75,10 @@ diagnostico_editorial:
       descripcion: "Detalle del bloqueo crítico detectado"
 ```
 
+`bloqueos_criticos` agrupa bloqueos editoriales graves que impiden considerar el contenido publicable. Si la lista no está vacía, `estado_revision` debe quedar en `FAIL`.
+
+Esta microfase solo refuerza el contrato editorial. No implementa todavía el gate operativo completo de publicabilidad. La conversión final entre diagnóstico + aprobación humana y `estado_publicabilidad` corresponde a una fase posterior.
+
 ---
 
 ## 7. Criterios de Veredicto
@@ -99,5 +103,4 @@ Marcar `FAIL` si:
 - contradice el perfil narrativo;
 - contiene PII, secretos o datos sensibles;
 - no se puede explicar qué idea del audio originó el post.
-
 

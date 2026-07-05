@@ -1,7 +1,8 @@
 from linkedin_content_system.contracts import (
     AprobacionHumana, EstadoAprobacion, SalidaLocalDraft,
-    DiagnosticoEditorial, EstadoRevision, NivelRiesgoGenerico, TipoAprobacion
+    DiagnosticoEditorial, EstadoRevision, NivelRiesgoGenerico, TipoAprobacion,
 )
+from linkedin_content_system.contracts.salida import EstadoPublicabilidad
 from .privacidad import validar_texto_sin_pii_basica, validar_texto_sin_secretos_basicos
 from .estructural import validar_sin_rutas_locales
 
@@ -25,35 +26,56 @@ def validar_modo_dry_run_local(salida: SalidaLocalDraft) -> None:
             f"Fase V1 Restricción: estado de salida debe ser 'borrador_local', se recibió '{salida.estado}'."
         )
 
-def validar_diagnostico_editorial_publicable(diagnostico: DiagnosticoEditorial, aprobacion: AprobacionHumana) -> None:
-    # 1. FAIL bloquea siempre
-    # 1. bloqueos_criticos no vacío bloquea siempre
+def resolver_estado_publicabilidad(
+    diagnostico: DiagnosticoEditorial,
+    aprobacion: AprobacionHumana,
+) -> EstadoPublicabilidad:
     if diagnostico.bloqueos_criticos:
-        raise ValueError("Publicación denegada: se detectaron bloqueos críticos en el diagnóstico editorial.")
+        return EstadoPublicabilidad.RECHAZADO_EDITORIAL
 
-    # 2. FAIL bloquea siempre
     if diagnostico.estado_revision == EstadoRevision.FAIL:
-        raise ValueError("Publicación denegada: estado_revision es FAIL.")
+        return EstadoPublicabilidad.RECHAZADO_EDITORIAL
+
+    if diagnostico.riesgo_generico == NivelRiesgoGenerico.ALTO:
+        return EstadoPublicabilidad.RECHAZADO_EDITORIAL
+
+    if diagnostico.compliance == EstadoRevision.FAIL:
+        return EstadoPublicabilidad.RECHAZADO_EDITORIAL
+
+    if diagnostico.autenticidad == EstadoRevision.FAIL:
+        return EstadoPublicabilidad.RECHAZADO_EDITORIAL
+
+    if aprobacion.estado != EstadoAprobacion.APROBADO:
+        return EstadoPublicabilidad.NO_PUBLICABLE
+
+    if diagnostico.estado_revision == EstadoRevision.WARN:
+        if aprobacion.tipo_aprobacion != TipoAprobacion.REFORZADA:
+            return EstadoPublicabilidad.REQUIERE_REVISION
+        return EstadoPublicabilidad.PUBLICABLE
+
+    return EstadoPublicabilidad.PUBLICABLE
 
 
-    # 3. riesgo_generico alto bloquea
+def validar_diagnostico_editorial_publicable(diagnostico: DiagnosticoEditorial, aprobacion: AprobacionHumana) -> None:
     if diagnostico.riesgo_generico == NivelRiesgoGenerico.ALTO:
         raise ValueError("Publicación denegada: nivel de riesgo genérico es alto.")
-
-    # 4. compliance FAIL bloquea
     if diagnostico.compliance == EstadoRevision.FAIL:
         raise ValueError("Publicación denegada: compliance es FAIL.")
-
-    # 5. autenticidad FAIL bloquea
     if diagnostico.autenticidad == EstadoRevision.FAIL:
         raise ValueError("Publicación denegada: autenticidad es FAIL.")
 
-    # 6. estado_revision WARN requiere aprobación reforzada
-    if diagnostico.estado_revision == EstadoRevision.WARN:
-        if aprobacion.tipo_aprobacion != TipoAprobacion.REFORZADA:
-            raise ValueError(
-                "Publicación denegada: el estado_revision es WARN pero no se cuenta con una aprobación reforzada."
-            )
+    estado_publicabilidad = resolver_estado_publicabilidad(diagnostico, aprobacion)
+    if estado_publicabilidad == EstadoPublicabilidad.PUBLICABLE:
+        return
+    if estado_publicabilidad == EstadoPublicabilidad.REQUIERE_REVISION:
+        raise ValueError(
+            "Publicación denegada: el estado_revision es WARN pero no se cuenta con una aprobación reforzada."
+        )
+    if estado_publicabilidad == EstadoPublicabilidad.RECHAZADO_EDITORIAL:
+        if diagnostico.bloqueos_criticos:
+            raise ValueError("Publicación denegada: se detectaron bloqueos críticos en el diagnóstico editorial.")
+        raise ValueError("Publicación denegada: estado_revision es FAIL.")
+    raise ValueError("Publicación denegada: la aprobación humana no está aprobada.")
 
 def _validar_campo_persistible(campo) -> None:
     if campo is None:
@@ -73,7 +95,7 @@ def validar_textos_persistibles_sin_pii_ni_secretos(salida: SalidaLocalDraft) ->
     _validar_campo_persistible(salida.aprobacion_humana.comentarios)
 
 def validar_salida_localdraft_segura(salida: SalidaLocalDraft) -> None:
-    validar_aprobacion_para_publicacion(salida.aprobacion_humana)
     validar_modo_dry_run_local(salida)
+    salida.estado_publicabilidad = resolver_estado_publicabilidad(salida.diagnostico_editorial, salida.aprobacion_humana)
     validar_diagnostico_editorial_publicable(salida.diagnostico_editorial, salida.aprobacion_humana)
     validar_textos_persistibles_sin_pii_ni_secretos(salida)

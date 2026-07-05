@@ -4,7 +4,8 @@ import pytest
 from pydantic import ValidationError
 from linkedin_content_system.contracts import (
     SalidaLocalDraft, PostCandidato, DiagnosticoEditorial, AprobacionHumana, EstadoAprobacion,
-    EstadoRevision, NivelRiesgoGenerico, ModoPublicacion, AdaptadorActivo, EstadoSalidaLocal
+    EstadoRevision, NivelRiesgoGenerico, ModoPublicacion, AdaptadorActivo, EstadoSalidaLocal,
+    BloqueoCritico, TipoBloqueoCritico
 )
 from linkedin_content_system.publishers import LocalDraftPublisher
 
@@ -108,6 +109,65 @@ def test_localdraft_bloquea_si_aprobacion_pendiente(tmp_path, diagnostico_pass):
     with pytest.raises(ValueError, match="Publicación denegada"):
         publisher.guardar(salida_pendiente, id_entrada="104")
 
+    assert not (tmp_path / "localdraft_104").exists()
+
+def test_localdraft_bloquea_si_requiere_revision_y_no_persiste(tmp_path, aprobacion_aprobada):
+    diagnostico_warn = DiagnosticoEditorial(
+        claridad_idea=EstadoRevision.WARN,
+        audiencia=EstadoRevision.PASS,
+        hook=EstadoRevision.PASS,
+        voz_cliente=EstadoRevision.PASS,
+        autenticidad=EstadoRevision.PASS,
+        cta=EstadoRevision.PASS,
+        compliance=EstadoRevision.PASS,
+        riesgo_generico=NivelRiesgoGenerico.BAJO,
+        estado_revision=EstadoRevision.WARN
+    )
+    salida_warn_simple = SalidaLocalDraft(
+        post=PostCandidato(texto="Post limpio"),
+        diagnostico_editorial=diagnostico_warn,
+        aprobacion_humana=aprobacion_aprobada,
+        modo_publicacion=ModoPublicacion.DRY_RUN,
+        adaptador_activo=AdaptadorActivo.LOCALDRAFT,
+        estado=EstadoSalidaLocal.BORRADOR_LOCAL
+    )
+    publisher = LocalDraftPublisher(base_dir=str(tmp_path))
+
+    with pytest.raises(ValueError, match="aprobación reforzada"):
+        publisher.guardar(salida_warn_simple, id_entrada="104_warn")
+
+    assert not (tmp_path / "localdraft_104_warn").exists()
+
+def test_localdraft_bloquea_si_hay_bloqueos_criticos_y_no_persiste(tmp_path, aprobacion_aprobada):
+    diagnostico_bloqueado = DiagnosticoEditorial(
+        claridad_idea=EstadoRevision.FAIL,
+        audiencia=EstadoRevision.PASS,
+        hook=EstadoRevision.PASS,
+        voz_cliente=EstadoRevision.PASS,
+        autenticidad=EstadoRevision.PASS,
+        cta=EstadoRevision.PASS,
+        compliance=EstadoRevision.PASS,
+        riesgo_generico=NivelRiesgoGenerico.BAJO,
+        estado_revision=EstadoRevision.FAIL,
+        bloqueos_criticos=[
+            BloqueoCritico(tipo=TipoBloqueoCritico.PII, descripcion="Correo detectado")
+        ]
+    )
+    salida_bloqueada = SalidaLocalDraft(
+        post=PostCandidato(texto="Post limpio"),
+        diagnostico_editorial=diagnostico_bloqueado,
+        aprobacion_humana=aprobacion_aprobada,
+        modo_publicacion=ModoPublicacion.DRY_RUN,
+        adaptador_activo=AdaptadorActivo.LOCALDRAFT,
+        estado=EstadoSalidaLocal.BORRADOR_LOCAL
+    )
+    publisher = LocalDraftPublisher(base_dir=str(tmp_path))
+
+    with pytest.raises(ValueError, match="bloqueos críticos"):
+        publisher.guardar(salida_bloqueada, id_entrada="104_blocks")
+
+    assert not (tmp_path / "localdraft_104_blocks").exists()
+
 def test_localdraft_bloquea_si_post_inseguro(tmp_path, diagnostico_pass, aprobacion_aprobada):
     publisher = LocalDraftPublisher(base_dir=str(tmp_path))
     
@@ -170,4 +230,3 @@ def test_localdraft_bloquea_id_entrada_vacio(tmp_path, salida_valida):
         publisher.guardar(salida_valida, id_entrada="")
     with pytest.raises(ValueError, match="no puede estar vacío"):
         publisher.guardar(salida_valida, id_entrada="   ")
-

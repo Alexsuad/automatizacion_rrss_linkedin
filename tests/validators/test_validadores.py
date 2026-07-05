@@ -1,15 +1,17 @@
 import pytest
 from linkedin_content_system.contracts import (
     SalidaLocalDraft, PostCandidato, DiagnosticoEditorial, AprobacionHumana, EstadoAprobacion,
-    EstadoRevision, NivelRiesgoGenerico, ModoPublicacion, AdaptadorActivo, EstadoSalidaLocal, TipoAprobacion
+    EstadoRevision, NivelRiesgoGenerico, ModoPublicacion, AdaptadorActivo, EstadoSalidaLocal, TipoAprobacion,
+    BloqueoCritico, TipoBloqueoCritico
 )
+from linkedin_content_system.contracts.salida import EstadoPublicabilidad
 from linkedin_content_system.validators import (
     detectar_email, detectar_telefono_basico, detectar_secreto_basico,
     validar_texto_sin_pii_basica, validar_texto_sin_secretos_basicos,
     detectar_ruta_local, validar_sin_rutas_locales,
     validar_texto_no_vacio, validar_lista_no_vacia,
     validar_aprobacion_para_publicacion, validar_modo_dry_run_local,
-    validar_salida_localdraft_segura
+    resolver_estado_publicabilidad, validar_salida_localdraft_segura
 )
 
 def test_validar_no_pii_detecta_correo_y_telefono():
@@ -71,6 +73,130 @@ def test_publicacion_aceptada_si_aprobacion_aprobada_con_fecha_y_responsable():
     )
     validar_aprobacion_para_publicacion(aprob)
 
+@pytest.mark.parametrize(
+    "estado_revision,tipo_aprobacion,estado_aprobacion,expected",
+    [
+        (EstadoRevision.PASS, TipoAprobacion.SIMPLE, EstadoAprobacion.APROBADO, "publicable"),
+        (EstadoRevision.WARN, TipoAprobacion.REFORZADA, EstadoAprobacion.APROBADO, "publicable"),
+        (EstadoRevision.WARN, TipoAprobacion.SIMPLE, EstadoAprobacion.APROBADO, "requiere_revision"),
+        (EstadoRevision.FAIL, TipoAprobacion.REFORZADA, EstadoAprobacion.APROBADO, "rechazado_editorial"),
+        (EstadoRevision.PASS, TipoAprobacion.SIMPLE, EstadoAprobacion.PENDIENTE, "no_publicable"),
+        (EstadoRevision.PASS, TipoAprobacion.SIMPLE, EstadoAprobacion.RECHAZADO, "no_publicable"),
+    ],
+)
+def test_resolver_estado_publicabilidad(
+    estado_revision,
+    tipo_aprobacion,
+    estado_aprobacion,
+    expected,
+):
+    diag_kwargs = dict(
+        claridad_idea=estado_revision,
+        audiencia=EstadoRevision.PASS,
+        hook=EstadoRevision.PASS,
+        voz_cliente=EstadoRevision.PASS,
+        autenticidad=EstadoRevision.PASS,
+        cta=EstadoRevision.PASS,
+        compliance=EstadoRevision.PASS,
+        riesgo_generico=NivelRiesgoGenerico.BAJO,
+        estado_revision=estado_revision,
+    )
+    if estado_revision == EstadoRevision.FAIL:
+        diag_kwargs["bloqueos_criticos"] = [
+            BloqueoCritico(tipo=TipoBloqueoCritico.PII, descripcion="Email detectado")
+        ]
+
+    diag = DiagnosticoEditorial(**diag_kwargs)
+    aprob = AprobacionHumana(
+        estado=estado_aprobacion,
+        aprobado_por="Alex" if estado_aprobacion == EstadoAprobacion.APROBADO else None,
+        fecha_aprobacion="2026-07-04T01:53:00Z" if estado_aprobacion == EstadoAprobacion.APROBADO else None,
+        tipo_aprobacion=tipo_aprobacion,
+        motivo_revision_reforzada=(
+            "Revisión reforzada validada"
+            if tipo_aprobacion == TipoAprobacion.REFORZADA and estado_aprobacion == EstadoAprobacion.APROBADO
+            else None
+        ),
+    )
+
+    assert resolver_estado_publicabilidad(diag, aprob).value == expected
+
+def test_resolver_estado_publicabilidad_rechaza_riesgo_alto():
+    diag = DiagnosticoEditorial(
+        claridad_idea=EstadoRevision.PASS,
+        audiencia=EstadoRevision.PASS,
+        hook=EstadoRevision.PASS,
+        voz_cliente=EstadoRevision.PASS,
+        autenticidad=EstadoRevision.PASS,
+        cta=EstadoRevision.PASS,
+        compliance=EstadoRevision.PASS,
+        riesgo_generico=NivelRiesgoGenerico.ALTO,
+        estado_revision=EstadoRevision.PASS,
+    )
+    aprob = AprobacionHumana(
+        estado=EstadoAprobacion.APROBADO,
+        aprobado_por="Alex",
+        fecha_aprobacion="2026-07-04T01:53:00Z"
+    )
+    assert resolver_estado_publicabilidad(diag, aprob) == EstadoPublicabilidad.RECHAZADO_EDITORIAL
+
+def test_resolver_estado_publicabilidad_rechaza_compliance_fail():
+    diag = DiagnosticoEditorial(
+        claridad_idea=EstadoRevision.PASS,
+        audiencia=EstadoRevision.PASS,
+        hook=EstadoRevision.PASS,
+        voz_cliente=EstadoRevision.PASS,
+        autenticidad=EstadoRevision.PASS,
+        cta=EstadoRevision.PASS,
+        compliance=EstadoRevision.FAIL,
+        riesgo_generico=NivelRiesgoGenerico.BAJO,
+        estado_revision=EstadoRevision.PASS,
+    )
+    aprob = AprobacionHumana(
+        estado=EstadoAprobacion.APROBADO,
+        aprobado_por="Alex",
+        fecha_aprobacion="2026-07-04T01:53:00Z"
+    )
+    assert resolver_estado_publicabilidad(diag, aprob) == EstadoPublicabilidad.RECHAZADO_EDITORIAL
+
+def test_resolver_estado_publicabilidad_rechaza_autenticidad_fail():
+    diag = DiagnosticoEditorial(
+        claridad_idea=EstadoRevision.PASS,
+        audiencia=EstadoRevision.PASS,
+        hook=EstadoRevision.PASS,
+        voz_cliente=EstadoRevision.PASS,
+        autenticidad=EstadoRevision.FAIL,
+        cta=EstadoRevision.PASS,
+        compliance=EstadoRevision.PASS,
+        riesgo_generico=NivelRiesgoGenerico.BAJO,
+        estado_revision=EstadoRevision.PASS,
+    )
+    aprob = AprobacionHumana(
+        estado=EstadoAprobacion.APROBADO,
+        aprobado_por="Alex",
+        fecha_aprobacion="2026-07-04T01:53:00Z"
+    )
+    assert resolver_estado_publicabilidad(diag, aprob) == EstadoPublicabilidad.RECHAZADO_EDITORIAL
+
+@pytest.mark.parametrize("estado_aprobacion", [EstadoAprobacion.PENDIENTE, EstadoAprobacion.RECHAZADO])
+def test_resolver_estado_publicabilidad_fail_con_aprobacion_no_aprobada_sigue_siendo_rechazado(
+    estado_aprobacion,
+):
+    diag = DiagnosticoEditorial(
+        claridad_idea=EstadoRevision.FAIL,
+        audiencia=EstadoRevision.PASS,
+        hook=EstadoRevision.PASS,
+        voz_cliente=EstadoRevision.PASS,
+        autenticidad=EstadoRevision.PASS,
+        cta=EstadoRevision.PASS,
+        compliance=EstadoRevision.PASS,
+        riesgo_generico=NivelRiesgoGenerico.BAJO,
+        estado_revision=EstadoRevision.FAIL,
+    )
+    aprob = AprobacionHumana(estado=estado_aprobacion)
+
+    assert resolver_estado_publicabilidad(diag, aprob) == EstadoPublicabilidad.RECHAZADO_EDITORIAL
+
 def test_salida_rechazada_si_no_es_dry_run_localdraft_borrador_local():
     diag = DiagnosticoEditorial(
         claridad_idea=EstadoRevision.PASS,
@@ -109,6 +235,58 @@ def test_salida_rechazada_si_no_es_dry_run_localdraft_borrador_local():
     )
     with pytest.raises(ValueError, match="teléfono"):
         validar_salida_localdraft_segura(salida_bad_pii)
+
+def test_validar_salida_marca_no_publicable_si_aprobacion_pendiente():
+    diag = DiagnosticoEditorial(
+        claridad_idea=EstadoRevision.PASS,
+        audiencia=EstadoRevision.PASS,
+        hook=EstadoRevision.PASS,
+        voz_cliente=EstadoRevision.PASS,
+        autenticidad=EstadoRevision.PASS,
+        cta=EstadoRevision.PASS,
+        compliance=EstadoRevision.PASS,
+        riesgo_generico=NivelRiesgoGenerico.BAJO,
+        estado_revision=EstadoRevision.PASS
+    )
+    salida = SalidaLocalDraft(
+        post=PostCandidato(texto="Post limpio"),
+        diagnostico_editorial=diag,
+        aprobacion_humana=AprobacionHumana(estado=EstadoAprobacion.PENDIENTE),
+        modo_publicacion=ModoPublicacion.DRY_RUN,
+        adaptador_activo=AdaptadorActivo.LOCALDRAFT,
+        estado=EstadoSalidaLocal.BORRADOR_LOCAL
+    )
+    with pytest.raises(ValueError, match="Publicación denegada"):
+        validar_salida_localdraft_segura(salida)
+    assert salida.estado_publicabilidad == EstadoPublicabilidad.NO_PUBLICABLE
+
+def test_validar_salida_marca_rechazado_editorial_si_riesgo_alto():
+    diag = DiagnosticoEditorial(
+        claridad_idea=EstadoRevision.PASS,
+        audiencia=EstadoRevision.PASS,
+        hook=EstadoRevision.PASS,
+        voz_cliente=EstadoRevision.PASS,
+        autenticidad=EstadoRevision.PASS,
+        cta=EstadoRevision.PASS,
+        compliance=EstadoRevision.PASS,
+        riesgo_generico=NivelRiesgoGenerico.ALTO,
+        estado_revision=EstadoRevision.PASS
+    )
+    salida = SalidaLocalDraft(
+        post=PostCandidato(texto="Post limpio"),
+        diagnostico_editorial=diag,
+        aprobacion_humana=AprobacionHumana(
+            estado=EstadoAprobacion.APROBADO,
+            aprobado_por="Alex",
+            fecha_aprobacion="2026-07-04T01:53:00Z"
+        ),
+        modo_publicacion=ModoPublicacion.DRY_RUN,
+        adaptador_activo=AdaptadorActivo.LOCALDRAFT,
+        estado=EstadoSalidaLocal.BORRADOR_LOCAL
+    )
+    with pytest.raises(ValueError, match="nivel de riesgo genérico es alto"):
+        validar_salida_localdraft_segura(salida)
+    assert salida.estado_publicabilidad == EstadoPublicabilidad.RECHAZADO_EDITORIAL
 
 def test_validar_editorial_fail_bloquea():
     diag = DiagnosticoEditorial(
@@ -400,4 +578,3 @@ def test_sanitiza_comentarios_aprobacion_bloquea():
     )
     with pytest.raises(ValueError, match="rutas locales"):
         validar_salida_localdraft_segura(salida)
-

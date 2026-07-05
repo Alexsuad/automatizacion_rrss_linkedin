@@ -6,6 +6,7 @@ from linkedin_content_system.contracts import (
     DiagnosticoEditorial, EstadoRevision, NivelRiesgoGenerico,
     PostCandidato, AprobacionHumana, EstadoAprobacion, SalidaLocalDraft, ManifestEvidencia
 )
+from linkedin_content_system.contracts.salida import EstadoPublicabilidad
 from linkedin_content_system.flows import ensamblar_flujo_local_simulado
 
 @pytest.fixture
@@ -53,6 +54,7 @@ def test_flujo_simulado_exitoso(entrada_valida, diagnostico_pass, aprobacion_apr
     assert isinstance(salida, SalidaLocalDraft)
     assert isinstance(manifest, ManifestEvidencia)
     assert salida.post.texto == post.texto
+    assert salida.estado_publicabilidad == EstadoPublicabilidad.PUBLICABLE
     assert manifest.id_entrada == entrada_valida.id_entrada
     assert "output/simulado/post.md" in manifest.archivos_generados
 

@@ -8,5 +8,6 @@ from .estructural import (
 )
 from .publicacion import (
     validar_aprobacion_para_publicacion, validar_modo_dry_run_local,
+    resolver_estado_publicabilidad,
     validar_salida_localdraft_segura
 )

@@ -6,6 +6,8 @@ from linkedin_content_system.contracts import (
     SalidaLocalDraft, AprobacionHumana, PostCandidato, EstadoAprobacion, ModoPublicacion, AdaptadorActivo, EstadoSalidaLocal,
     ManifestEvidencia, EstadoEvidencia
 )
+from linkedin_content_system.contracts.salida import EstadoPublicabilidad, TipoAprobacion
+
 
 def test_entrada_valida_con_intencion_completa():
     entrada = EntradaContenido(
@@ -150,6 +152,7 @@ def test_salida_localdraft_valida():
         modo_publicacion=ModoPublicacion.DRY_RUN,
         adaptador_activo=AdaptadorActivo.LOCALDRAFT,
         estado=EstadoSalidaLocal.BORRADOR_LOCAL,
+        estado_publicabilidad=EstadoPublicabilidad.PUBLICABLE,
         fecha_objetivo_sugerida="2026-07-07T09:00:00Z"
     )
     assert salida.post.texto == "Este es mi post de LinkedIn."
@@ -178,7 +181,8 @@ def test_salida_rechaza_modo_publicacion_invalido():
             ),
             modo_publicacion="publicacion_real",
             adaptador_activo=AdaptadorActivo.LOCALDRAFT,
-            estado=EstadoSalidaLocal.BORRADOR_LOCAL
+            estado=EstadoSalidaLocal.BORRADOR_LOCAL,
+            estado_publicabilidad=EstadoPublicabilidad.PUBLICABLE
         )
 
 def test_salida_rechaza_adaptador_no_local():
@@ -204,8 +208,99 @@ def test_salida_rechaza_adaptador_no_local():
             ),
             modo_publicacion=ModoPublicacion.DRY_RUN,
             adaptador_activo="metricool",
-            estado=EstadoSalidaLocal.BORRADOR_LOCAL
+            estado=EstadoSalidaLocal.BORRADOR_LOCAL,
+            estado_publicabilidad=EstadoPublicabilidad.PUBLICABLE
         )
+
+def test_salida_estados_publicabilidad():
+    diag = DiagnosticoEditorial(
+        claridad_idea=EstadoRevision.PASS,
+        audiencia=EstadoRevision.PASS,
+        hook=EstadoRevision.PASS,
+        voz_cliente=EstadoRevision.PASS,
+        autenticidad=EstadoRevision.PASS,
+        cta=EstadoRevision.PASS,
+        compliance=EstadoRevision.PASS,
+        riesgo_generico=NivelRiesgoGenerico.BAJO,
+        estado_revision=EstadoRevision.PASS
+    )
+    for est in [
+        EstadoPublicabilidad.PUBLICABLE,
+        EstadoPublicabilidad.REQUIERE_REVISION,
+        EstadoPublicabilidad.RECHAZADO_EDITORIAL,
+        EstadoPublicabilidad.NO_PUBLICABLE
+    ]:
+        salida = SalidaLocalDraft(
+            post=PostCandidato(texto="Post"),
+            diagnostico_editorial=diag,
+            aprobacion_humana=AprobacionHumana(
+                estado=EstadoAprobacion.APROBADO,
+                aprobado_por="Alex",
+                fecha_aprobacion="2026-07-04T01:38:00Z"
+            ),
+            modo_publicacion=ModoPublicacion.DRY_RUN,
+            adaptador_activo=AdaptadorActivo.LOCALDRAFT,
+            estado=EstadoSalidaLocal.BORRADOR_LOCAL,
+            estado_publicabilidad=est
+        )
+        assert salida.estado_publicabilidad == est
+
+def test_aprobacion_reforzada_requerida_e_invalida():
+    # revision_reforzada_requerida=True exige tipo_aprobacion=reforzada y motivo no vacío
+    with pytest.raises(ValidationError):
+        AprobacionHumana(
+            estado=EstadoAprobacion.APROBADO,
+            aprobado_por="Alex",
+            fecha_aprobacion="2026-07-04T01:38:00Z",
+            revision_reforzada_requerida=True,
+            tipo_aprobacion=TipoAprobacion.SIMPLE
+        )
+
+    with pytest.raises(ValidationError):
+        AprobacionHumana(
+            estado=EstadoAprobacion.APROBADO,
+            aprobado_por="Alex",
+            fecha_aprobacion="2026-07-04T01:38:00Z",
+            revision_reforzada_requerida=True,
+            tipo_aprobacion=TipoAprobacion.REFORZADA,
+            motivo_revision_reforzada=""
+        )
+
+    # Exitoso
+    aprob = AprobacionHumana(
+        estado=EstadoAprobacion.APROBADO,
+        aprobado_por="Alex",
+        fecha_aprobacion="2026-07-04T01:38:00Z",
+        revision_reforzada_requerida=True,
+        tipo_aprobacion=TipoAprobacion.REFORZADA,
+        motivo_revision_reforzada="Se revisó a detalle el WARN y se considera aceptable"
+    )
+    assert aprob.tipo_aprobacion == TipoAprobacion.REFORZADA
+    assert aprob.motivo_revision_reforzada is not None
+
+def test_aprobacion_reforzada_siempre_exige_motivo():
+    # Toda aprobación reforzada (incluso voluntaria) exige motivo_revision_reforzada
+    with pytest.raises(ValidationError):
+        AprobacionHumana(
+            estado=EstadoAprobacion.APROBADO,
+            aprobado_por="Alex",
+            fecha_aprobacion="2026-07-04T01:38:00Z",
+            revision_reforzada_requerida=False,
+            tipo_aprobacion=TipoAprobacion.REFORZADA
+        )
+
+def test_aprobacion_pendiente_no_exige_aprobador():
+    # En estado pendiente, no se exige aprobado_por ni fecha_aprobacion
+    aprob = AprobacionHumana(estado=EstadoAprobacion.PENDIENTE)
+    assert aprob.estado == EstadoAprobacion.PENDIENTE
+    assert aprob.aprobado_por is None
+
+def test_aprobacion_rechazada_no_exige_aprobador_ni_fecha():
+    # Si el contrato no dice lo contrario, rechazado no exige aprobado_por ni fecha_aprobacion
+    aprob = AprobacionHumana(estado=EstadoAprobacion.RECHAZADO)
+    assert aprob.estado == EstadoAprobacion.RECHAZADO
+    assert aprob.aprobado_por is None
+    assert aprob.fecha_aprobacion is None
 
 def test_aprobacion_aprobada_requiere_responsable_y_fecha():
     aprob_pendiente = AprobacionHumana(estado=EstadoAprobacion.PENDIENTE)
@@ -365,5 +460,4 @@ def test_aprobacion_reforzada_atributos():
     )
     assert aprob.tipo_aprobacion == TipoAprobacion.REFORZADA
     assert aprob.revision_reforzada_requerida is True
-
 

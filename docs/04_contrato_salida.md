@@ -43,6 +43,7 @@ Al finalizar el proceso, el sistema guarda un archivo JSON de salida en `output/
   "modo_publicacion": "dry_run",
   "adaptador_activo": "localdraft",
   "estado": "borrador_local",
+  "estado_publicabilidad": "publicable",
   "fecha_objetivo_sugerida": "2026-07-07T09:00:00Z"
 }
 ```
@@ -54,12 +55,18 @@ Al finalizar el proceso, el sistema guarda un archivo JSON de salida en `output/
 
 ## 3. Matriz de Publicabilidad Editorial y Gates
 
-La persistencia de la salida y el almacenamiento de evidencias están controlados por un gate determinista estricto que evalúa el diagnóstico editorial y la aprobación humana:
+La persistencia de la salida y el almacenamiento de evidencias deberán quedar controlados por un gate determinista estricto que evalúe el diagnóstico editorial y la aprobación humana.
 
-*   **PASS + Aprobado (Simple):** Si `estado_revision == PASS` y la aprobación humana tiene `estado == aprobado` y `tipo_aprobacion == simple`, se permite guardar en disco localmente.
-*   **WARN + Aprobado (Reforzado):** Si `estado_revision == WARN`, el sistema bloquea cualquier intento de guardado a menos que la aprobación humana tenga `estado == aprobado` y su `tipo_aprobacion == reforzada`. Esto asegura que el revisor humano ha levantado conscientemente el warning editorial.
-*   **FAIL / Bloqueos Críticos:** Si `estado_revision == FAIL` o el diagnóstico contiene cualquier `bloqueo_critico`, el flujo se detiene de inmediato. Está estrictamente prohibido guardar como borrador local listo.
-*   **Aprobación Pendiente:** Si el estado de aprobación no es `aprobado`, no se permite la persistencia final de salida como borrador publicable.
+Esta matriz define la regla de publicabilidad que deberá aplicar el validador en una fase posterior. En esta microfase el contrato solo incorpora los campos necesarios para representar el resultado de esa decisión, sin implementar todavía el cálculo operativo.
+
+*   **PASS + aprobación simple:** $\rightarrow$ `publicable` / puede avanzar y guardar en disco localmente.
+*   **WARN + aprobación reforzada:** $\rightarrow$ `publicable` / puede avanzar con advertencias si el revisor humano ha levantado conscientemente el warning editorial.
+*   **WARN + aprobación simple:** $\rightarrow$ `requiere_revision` / bloqueado hasta obtener aprobación reforzada.
+*   **FAIL + cualquier aprobación:** $\rightarrow$ `rechazado_editorial` / bloqueado de inmediato. Está estrictamente prohibido guardar como borrador local listo.
+*   **Sin aprobación (ej. estado pendiente o rechazado):** $\rightarrow$ `no_publicable` / no se permite la persistencia final de salida como borrador publicable.
+
+> [!NOTE]
+> En esta microfase, si `estado_publicabilidad` aparece como `no_publicable` por defecto, debe interpretarse como estado conservador transitorio. No significa que el sistema haya ejecutado todavía el cálculo operativo de publicabilidad. La lógica automática será responsabilidad del validador en una fase posterior.
 
 ---
 

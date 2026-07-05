@@ -22,6 +22,12 @@ class AdaptadorActivo(str, Enum):
 class EstadoSalidaLocal(str, Enum):
     BORRADOR_LOCAL = "borrador_local"
 
+class EstadoPublicabilidad(str, Enum):
+    PUBLICABLE = "publicable"
+    REQUIERE_REVISION = "requiere_revision"
+    RECHAZADO_EDITORIAL = "rechazado_editorial"
+    NO_PUBLICABLE = "no_publicable"
+
 class PostCandidato(BaseModel):
     texto: str
 
@@ -41,6 +47,27 @@ class AprobacionHumana(BaseModel):
                 raise ValueError("aprobado_por es obligatorio cuando el estado es aprobado.")
             if not self.fecha_aprobacion or not self.fecha_aprobacion.strip():
                 raise ValueError("fecha_aprobacion es obligatoria cuando el estado es aprobado.")
+            
+            # Validación: Si revision_reforzada_requerida == True:
+            # - tipo_aprobacion debe ser reforzada
+            # - motivo_revision_reforzada debe ser no vacío
+            if self.revision_reforzada_requerida:
+                if self.tipo_aprobacion != TipoAprobacion.REFORZADA:
+                    raise ValueError(
+                        "Se requiere revisión reforzada. El tipo de aprobación debe ser 'reforzada'."
+                    )
+                if not self.motivo_revision_reforzada or not self.motivo_revision_reforzada.strip():
+                    raise ValueError(
+                        "Debe especificarse el motivo_revision_reforzada al usar aprobación reforzada."
+                    )
+            
+            # Validación: Si tipo_aprobacion == reforzada:
+            # - motivo_revision_reforzada debe ser no vacío
+            if self.tipo_aprobacion == TipoAprobacion.REFORZADA:
+                if not self.motivo_revision_reforzada or not self.motivo_revision_reforzada.strip():
+                    raise ValueError(
+                        "Debe especificarse el motivo_revision_reforzada al usar aprobación reforzada."
+                    )
         return self
 
 class SalidaLocalDraft(BaseModel):
@@ -50,4 +77,7 @@ class SalidaLocalDraft(BaseModel):
     modo_publicacion: ModoPublicacion
     adaptador_activo: AdaptadorActivo
     estado: EstadoSalidaLocal
+    estado_publicabilidad: EstadoPublicabilidad = EstadoPublicabilidad.NO_PUBLICABLE
     fecha_objetivo_sugerida: Optional[str] = None
+
+

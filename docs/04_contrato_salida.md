@@ -55,9 +55,9 @@ Al finalizar el proceso, el sistema guarda un archivo JSON de salida en `output/
 
 ## 3. Matriz de Publicabilidad Editorial y Gates
 
-La persistencia de la salida y el almacenamiento de evidencias deberán quedar controlados por un gate determinista estricto que evalúe el diagnóstico editorial y la aprobación humana.
+La persistencia de la salida y el almacenamiento de evidencias quedan controlados por un gate determinista estricto que evalúa el diagnóstico editorial y la aprobación humana mediante `resolver_estado_publicabilidad`.
 
-Esta matriz define la regla de publicabilidad que deberá aplicar el validador en una fase posterior. En esta microfase el contrato solo incorpora los campos necesarios para representar el resultado de esa decisión, sin implementar todavía el cálculo operativo.
+Esta matriz define la regla de publicabilidad que aplica el validador operativo antes de persistir con `LocalDraft`. En V1 local/dry_run no hay publicación real ni programación externa, pero `estado_publicabilidad` ya no es solo representacional: queda resuelto por la validación operativa.
 
 *   **PASS + aprobación simple:** $\rightarrow$ `publicable` / puede avanzar y guardar en disco localmente.
 *   **WARN + aprobación reforzada:** $\rightarrow$ `publicable` / puede avanzar con advertencias si el revisor humano ha levantado conscientemente el warning editorial.
@@ -66,7 +66,7 @@ Esta matriz define la regla de publicabilidad que deberá aplicar el validador e
 *   **Sin aprobación (ej. estado pendiente o rechazado):** $\rightarrow$ `no_publicable` / no se permite la persistencia final de salida como borrador publicable.
 
 > [!NOTE]
-> En esta microfase, si `estado_publicabilidad` aparece como `no_publicable` por defecto, debe interpretarse como estado conservador transitorio. No significa que el sistema haya ejecutado todavía el cálculo operativo de publicabilidad. La lógica automática será responsabilidad del validador en una fase posterior.
+> En V1 local/dry_run, `estado_publicabilidad` se resuelve antes de persistir y no implica publicación real ni programación externa.
 
 ---
 

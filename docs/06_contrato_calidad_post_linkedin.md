@@ -77,7 +77,7 @@ diagnostico_editorial:
 
 `bloqueos_criticos` agrupa bloqueos editoriales graves que impiden considerar el contenido publicable. Si la lista no está vacía, `estado_revision` debe quedar en `FAIL`.
 
-Esta microfase solo refuerza el contrato editorial. No implementa todavía el gate operativo completo de publicabilidad. La conversión final entre diagnóstico + aprobación humana y `estado_publicabilidad` corresponde a una fase posterior.
+El contrato editorial define criterios y bloqueos, y la resolución operativa de publicabilidad ya existe en `validators/publicacion.py`. Allí, los bloqueos críticos, `FAIL` editorial, riesgo alto, `compliance` `FAIL` y `autenticidad` `FAIL` terminan en `rechazado_editorial`. En V1 esto no implica publicación real ni programación externa.
 
 ---
 
@@ -103,4 +103,3 @@ Marcar `FAIL` si:
 - contradice el perfil narrativo;
 - contiene PII, secretos o datos sensibles;
 - no se puede explicar qué idea del audio originó el post.
-

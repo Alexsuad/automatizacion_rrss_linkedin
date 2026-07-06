@@ -8,7 +8,7 @@ from .editorial import (
 )
 from .salida import (
     SalidaLocalDraft, AprobacionHumana, PostCandidato, EstadoAprobacion,
-    ModoPublicacion, AdaptadorActivo, EstadoSalidaLocal, TipoAprobacion
+    ModoPublicacion, AdaptadorActivo, EstadoSalidaLocal, EstadoPublicabilidad, TipoAprobacion
 )
 from .evidencia import ManifestEvidencia, EstadoEvidencia
 from .idea_central import IdeaCentral
@@ -23,5 +23,4 @@ from .compatibilidad_contexto import ResultadoCompatibilidadContexto
 from .cambio_contexto import ResultadoCambioContexto
 from .resultado_pipeline_contexto_offline import ResultadoPipelineContextoOffline
 from .evidencia_contexto_usado import EvidenciaContextoUsado
-
 

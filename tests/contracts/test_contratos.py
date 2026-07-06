@@ -158,6 +158,11 @@ def test_salida_localdraft_valida():
     assert salida.post.texto == "Este es mi post de LinkedIn."
     assert salida.aprobacion_humana.estado == "aprobado"
 
+def test_estado_publicabilidad_exportado_publicamente():
+    from linkedin_content_system.contracts import EstadoPublicabilidad as EstadoPublicabilidadExportada
+
+    assert EstadoPublicabilidadExportada is EstadoPublicabilidad
+
 def test_salida_rechaza_modo_publicacion_invalido():
     diag = DiagnosticoEditorial(
         claridad_idea=EstadoRevision.PASS,

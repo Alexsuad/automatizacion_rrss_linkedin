@@ -31,7 +31,7 @@ El estado del repositorio cuenta con gobernanza documental robusta:
 
 El problema que resuelve este documento ya no es "qué imaginar", sino dejar un mapa vigente y confiable de dónde estamos, qué quedó cerrado y cuál es la siguiente decisión real.
 
-Antes de trabajar con contexto real de cliente o fuentes externas, ejecutar Fase J.
+Antes de trabajar con contexto real de cliente o fuentes externas, aplicar las reglas ya cerradas de Fase J.
 
 ## 1.1 Estado actual del proyecto
 
@@ -176,7 +176,7 @@ Objetivo: convertir el sistema en algo más amplio y reusable.
 * **Objetivo:** Unir todo el pipeline semántico sin IA real ni red.
 * **Resultado esperado:** Tests end-to-end simulados que generen `post.md`, `diagnostico.json`, `manifest.json` y el estado final de publicabilidad.
 
-### Fase I — Transcripción local
+### Fase I — Exports públicos de F/G/H
 * **Objetivo real cerrado:** Exports públicos de F/G/H.
 * **Resultado:** Exportar de forma pública los contratos y evidencias de Fase F, Fase G y Fase H.
 * **Estado del mapa real:** cerrado como hito de trazabilidad; no debe reinterpretarse como transcripción local.
@@ -233,6 +233,15 @@ Objetivo: convertir el sistema en algo más amplio y reusable.
 * **Recursos visuales y carruseles:** pendiente futuro, no implementados.
 * **UI o interfaz operativa:** pendiente futuro, no implementada.
 * **Métricas/analítica posterior:** pendiente futuro, no implementada.
+
+### Etapa S.0 — Diseño de trazabilidad fuerte entrada → idea → post
+* **Estado:** diseño documental/pre-código. No iniciada como implementación.
+* **Objetivo:** definir una validación determinista y auditable que compruebe que el `PostLinkedIn` o salida candidata equivalente existente no introduce hechos, autoridad, anécdotas, cifras, promesas, claims o referencias sensibles no soportadas por la entrada original, la idea central o el contexto permitido.
+* **Alcance acotado:** no intenta detectar todas las afirmaciones del texto. Solo revisa afirmaciones explícitas sensibles o de riesgo: cifras, logros, autoridad, experiencia personal, promesas, claims técnicos/comerciales y referencias a cliente/contexto.
+* **Estados esperados:** `PASS`, `WARN`, `FAIL`.
+* **Integración futura:** después de generar el post candidato, antes de aprobación humana, antes de resolver `estado_publicabilidad` y antes de persistir `LocalDraft`.
+* **Fuera de alcance en S.0:** IA real, RAG, embeddings, vector DB, Internet, Metricool, transcripción real, publicación real y UI.
+* **Microfases previstas:** S.1 contratos/modelos mínimos, S.2 validador determinista, S.3 integración con diagnóstico/publicabilidad y S.4 tests end-to-end offline.
 
 ---
 

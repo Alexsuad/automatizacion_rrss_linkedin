@@ -81,7 +81,49 @@ El contrato editorial define criterios y bloqueos, y la resolución operativa de
 
 ---
 
-## 7. Criterios de Veredicto
+## 7. Trazabilidad Fuerte Futuro Inmediato (Etapa S)
+La Etapa S incorpora un criterio adicional de trazabilidad fuerte entre entrada original, idea central, contexto permitido y `PostLinkedIn` o salida candidata equivalente existente en el pipeline.
+
+Su objetivo es validar de forma determinista y offline que el contenido no avance cuando introduce información sensible o de riesgo no soportada por la evidencia disponible.
+
+El alcance de esta etapa es deliberadamente acotado:
+*   No busca detectar todas las afirmaciones del texto.
+*   Solo valida afirmaciones explícitas sensibles o de riesgo:
+    *   cifras;
+    *   logros;
+    *   autoridad;
+    *   experiencia personal;
+    *   promesas;
+    *   claims técnicos o comerciales;
+    *   referencias a cliente o contexto.
+
+Estados propuestos del diagnóstico de trazabilidad:
+*   **PASS:** No hay hallazgos y el post se mantiene dentro del soporte explícito permitido.
+*   **WARN:** Solo existen hallazgos de tipo `inferencia_debil`.
+*   **FAIL:** Existe al menos un hallazgo crítico no soportado.
+
+Tipos de hallazgos propuestos:
+*   `hecho_no_soportado`
+*   `autoridad_fingida`
+*   `anecdota_inventada`
+*   `cifra_no_soportada`
+*   `promesa_excesiva`
+*   `claim_sin_fuente`
+*   `inferencia_debil`
+*   `contradiccion_con_contexto`
+
+Reglas propuestas de bloqueo:
+*   `FAIL` si aparece cualquiera de estos hallazgos: `hecho_no_soportado`, `autoridad_fingida`, `anecdota_inventada`, `cifra_no_soportada`, `promesa_excesiva`, `claim_sin_fuente` o `contradiccion_con_contexto`.
+*   `WARN` si el único hallazgo presente es `inferencia_debil`.
+*   `PASS` si no se detectan hallazgos y el contenido permanece trazable a la entrada, la idea central y el contexto permitido.
+
+`SIN_APROBACION` no es un hallazgo de trazabilidad. Pertenece al gate humano y a la resolución de publicabilidad, no al análisis de soporte contenido → evidencia.
+
+La integración futura de esta etapa debe ocurrir después de la generación del post candidato, antes de la aprobación humana, antes de resolver `estado_publicabilidad` y antes de persistir `LocalDraft`. Esta microfase S.0 es solo documental y no implementa todavía contratos Python, validadores operativos ni cambios de flujo.
+
+---
+
+## 8. Criterios de Veredicto
 *   **PASS:** Cumple el alcance, tiene idea clara, respeta la voz del autor y está libre de riesgos de compliance o PII.
 *   **WARN:** Cumple parcialmente pero tiene riesgos editoriales menores. Requiere revisión y aprobación humana reforzada.
 *   **FAIL:** Contiene algún bloqueo crítico o no cumple la idea central básica. Debe corregirse obligatoriamente en el origen.

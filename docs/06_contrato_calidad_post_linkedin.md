@@ -77,11 +77,11 @@ diagnostico_editorial:
 
 `bloqueos_criticos` agrupa bloqueos editoriales graves que impiden considerar el contenido publicable. Si la lista no está vacía, `estado_revision` debe quedar en `FAIL`.
 
-El contrato editorial define criterios y bloqueos, y la resolución operativa de publicabilidad ya existe en `validators/publicacion.py`. Allí, los bloqueos críticos, `FAIL` editorial, riesgo alto, `compliance` `FAIL` y `autenticidad` `FAIL` terminan en `rechazado_editorial`. En V1 esto no implica publicación real ni programación externa.
+El contrato editorial define criterios y bloqueos, y la resolución operativa de publicabilidad ya existe en `validators/publicacion.py`. Allí, los bloqueos críticos, `FAIL` editorial, riesgo alto, `compliance` `FAIL`, `autenticidad` `FAIL` y `diagnostico_trazabilidad` `FAIL` terminan en `rechazado_editorial`. En V1 esto no implica publicación real ni programación externa.
 
 ---
 
-## 7. Trazabilidad Fuerte Futuro Inmediato (Etapa S)
+## 7. Trazabilidad Fuerte (Etapa S)
 La Etapa S incorpora un criterio adicional de trazabilidad fuerte entre entrada original, idea central, contexto permitido y `PostLinkedIn` o salida candidata equivalente existente en el pipeline.
 
 Su objetivo es validar de forma determinista y offline que el contenido no avance cuando introduce información sensible o de riesgo no soportada por la evidencia disponible.
@@ -119,7 +119,7 @@ Reglas propuestas de bloqueo:
 
 `SIN_APROBACION` no es un hallazgo de trazabilidad. Pertenece al gate humano y a la resolución de publicabilidad, no al análisis de soporte contenido → evidencia.
 
-La integración futura de esta etapa debe ocurrir después de la generación del post candidato, antes de la aprobación humana, antes de resolver `estado_publicabilidad` y antes de persistir `LocalDraft`. Esta microfase S.0 es solo documental y no implementa todavía contratos Python, validadores operativos ni cambios de flujo.
+La integración efectiva ocurre después de la generación del post candidato, antes de la aprobación humana, antes de resolver `estado_publicabilidad` y antes de persistir `LocalDraft`. Esta etapa ya cuenta con contratos Python, validador determinista, integración de flujo y persistencia controlada en `LocalDraftPublisher`.
 
 ---
 

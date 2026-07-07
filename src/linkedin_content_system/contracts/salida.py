@@ -1,7 +1,10 @@
 from enum import Enum
 from typing import Optional
+
 from pydantic import BaseModel, model_validator
+
 from .editorial import DiagnosticoEditorial
+from .trazabilidad import DiagnosticoTrazabilidad, EstadoTrazabilidad
 
 class EstadoAprobacion(str, Enum):
     PENDIENTE = "pendiente"
@@ -73,6 +76,7 @@ class AprobacionHumana(BaseModel):
 class SalidaLocalDraft(BaseModel):
     post: PostCandidato
     diagnostico_editorial: DiagnosticoEditorial
+    diagnostico_trazabilidad: Optional[DiagnosticoTrazabilidad] = None
     aprobacion_humana: AprobacionHumana
     modo_publicacion: ModoPublicacion
     adaptador_activo: AdaptadorActivo
@@ -80,4 +84,21 @@ class SalidaLocalDraft(BaseModel):
     estado_publicabilidad: EstadoPublicabilidad = EstadoPublicabilidad.NO_PUBLICABLE
     fecha_objetivo_sugerida: Optional[str] = None
 
-
+    @model_validator(mode="after")
+    def validar_coherencia_trazabilidad(self):
+        if (
+            self.estado_publicabilidad == EstadoPublicabilidad.PUBLICABLE
+            and self.diagnostico_trazabilidad is None
+        ):
+            raise ValueError(
+                "Si estado_publicabilidad es publicable, diagnostico_trazabilidad es obligatorio."
+            )
+        if (
+            self.diagnostico_trazabilidad is not None
+            and self.diagnostico_trazabilidad.estado == EstadoTrazabilidad.FAIL
+            and self.estado_publicabilidad == EstadoPublicabilidad.PUBLICABLE
+        ):
+            raise ValueError(
+                "Si el diagnostico_trazabilidad es FAIL, estado_publicabilidad no puede ser publicable."
+            )
+        return self

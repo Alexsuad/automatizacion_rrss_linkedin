@@ -11,10 +11,17 @@ def generar_borrador_local_desde_simulacion(
     diagnostico: DiagnosticoEditorial,
     aprobacion: AprobacionHumana,
     base_dir: str,
-    clock: Optional[Callable[[], str]] = None
+    clock: Optional[Callable[[], str]] = None,
+    diagnostico_trazabilidad=None,
 ) -> ManifestEvidencia:
     # 1. Ejecutar flujo local simulado en memoria (aplica validaciones de post y aprobación)
-    salida, _ = ensamblar_flujo_local_simulado(entrada, post, diagnostico, aprobacion)
+    salida, _ = ensamblar_flujo_local_simulado(
+        entrada,
+        post,
+        diagnostico,
+        aprobacion,
+        diagnostico_trazabilidad=diagnostico_trazabilidad,
+    )
 
     # 2. Instanciar publicador localdraft
     publisher = LocalDraftPublisher(base_dir=base_dir, clock=clock)

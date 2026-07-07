@@ -67,7 +67,7 @@ Antes de trabajar con contexto real de cliente o fuentes externas, aplicar las r
 - [x] Saneamiento Marketing/RRSS/Producto — bloqueos críticos editoriales.
 - [x] Saneamiento Marketing/RRSS/Producto — validación operativa antes de persistir LocalDraft.
 - [x] Saneamiento Marketing/RRSS/Producto — documentación alineada y export público.
-- [~] Próxima decisión — Etapa S: trazabilidad fuerte entrada → idea → post (pendiente de autorización).
+- [x] Etapa S — Trazabilidad fuerte entrada → idea → post.
 - [ ] Proveedor IA real configurable en modo dry_run.
 - [ ] Transcripción local real.
 - [ ] Adaptador externo tipo Metricool dry_run.
@@ -220,8 +220,16 @@ Objetivo: convertir el sistema en algo más amplio y reusable.
 * **Objetivo:** Consolidar el mapa técnico real de contexto y pipeline offline.
 * **Resultado esperado:** Documento técnico de referencia para el estado ejecutado.
 
+### Etapa S — Trazabilidad fuerte entrada → idea → post
+* **Estado:** implementada como validación determinista offline y gobernanza de salida local.
+* **S.0 — Diseño documental:** cerrada.
+* **S.1 — Contratos/modelos mínimos:** cerrada.
+* **S.2 — Validador determinista:** cerrada.
+* **S.3 — Integración con diagnóstico/publicabilidad/LocalDraft:** cerrada.
+* **S.4 — Tests end-to-end offline y cierre:** cerrada.
+* **Resultado:** el post candidato no avanza como publicable ni como `LocalDraft` listo si introduce hechos, autoridad, anécdotas, cifras, promesas, claims o referencias sensibles no soportadas por la entrada original, la idea central o el contexto permitido.
+
 ### Roadmap futuro funcional
-* **Etapa S — Trazabilidad fuerte entrada → idea → post:** próxima decisión candidata, pendiente de autorización.
 * **Transcripción local real:** pendiente futuro, sin letra cerrada en el mapa real.
 * **Proveedor IA real configurable:** pendiente futuro, sin letra cerrada en el mapa real.
 * **Configuración segura avanzada:** pendiente futuro, no implementada.
@@ -233,15 +241,6 @@ Objetivo: convertir el sistema en algo más amplio y reusable.
 * **Recursos visuales y carruseles:** pendiente futuro, no implementados.
 * **UI o interfaz operativa:** pendiente futuro, no implementada.
 * **Métricas/analítica posterior:** pendiente futuro, no implementada.
-
-### Etapa S.0 — Diseño de trazabilidad fuerte entrada → idea → post
-* **Estado:** diseño documental/pre-código. No iniciada como implementación.
-* **Objetivo:** definir una validación determinista y auditable que compruebe que el `PostLinkedIn` o salida candidata equivalente existente no introduce hechos, autoridad, anécdotas, cifras, promesas, claims o referencias sensibles no soportadas por la entrada original, la idea central o el contexto permitido.
-* **Alcance acotado:** no intenta detectar todas las afirmaciones del texto. Solo revisa afirmaciones explícitas sensibles o de riesgo: cifras, logros, autoridad, experiencia personal, promesas, claims técnicos/comerciales y referencias a cliente/contexto.
-* **Estados esperados:** `PASS`, `WARN`, `FAIL`.
-* **Integración futura:** después de generar el post candidato, antes de aprobación humana, antes de resolver `estado_publicabilidad` y antes de persistir `LocalDraft`.
-* **Fuera de alcance en S.0:** IA real, RAG, embeddings, vector DB, Internet, Metricool, transcripción real, publicación real y UI.
-* **Microfases previstas:** S.1 contratos/modelos mínimos, S.2 validador determinista, S.3 integración con diagnóstico/publicabilidad y S.4 tests end-to-end offline.
 
 ---
 
@@ -261,15 +260,20 @@ Toda fase técnica debe cerrarse con prueba proporcional, evidencia del comando 
 
 1.  **Gate de entrada:** El contenido inicial cumple estrictamente el formato y tamaño esperado.
 2.  **Gate de sanitización (PII/Secretos):** Ningún dato personal identificable o secreto del entorno pasa al pipeline editorial.
-3.  **Gate de calidad editorial:**
+3.  **Gate de calidad editorial y trazabilidad:**
     * El diagnóstico `PASS` puede avanzar con aprobación humana simple.
     * El diagnóstico `WARN` solo puede avanzar con aprobación humana reforzada.
     * El diagnóstico `FAIL` no puede avanzar como salida publicable.
+    * El diagnóstico de trazabilidad `FAIL` bloquea la publicabilidad y la persistencia de `LocalDraft`.
 4.  **Gate de aprobación humana:** Aprobación explícita (simple para `PASS`, reforzada para `WARN`) antes de la persistencia o programación.
 5.  **Gate de publicabilidad:** Valida el campo `estado_publicabilidad` y confirma que solo pueda ser publicable cuando:
-    * Diagnóstico editorial `PASS` + aprobación simple, o
-    * Diagnóstico editorial `WARN` + aprobación reforzada.
-    * Sin bloqueos críticos, sin PII, sin secretos, y con evidencia completa registrada en el manifest.
+    * Diagnóstico editorial `PASS` + trazabilidad `PASS` + aprobación simple, o
+    * Diagnóstico editorial `PASS` + trazabilidad `WARN` + aprobación reforzada, o
+    * Diagnóstico editorial `WARN` + trazabilidad `PASS` + aprobación reforzada, o
+    * Diagnóstico editorial `WARN` + trazabilidad `WARN` + aprobación reforzada.
+    * Cualquier `FAIL` editorial o `FAIL` de trazabilidad debe quedar rechazado_editorial.
+    * Cualquier `WARN` editorial o `WARN` de trazabilidad sin aprobación reforzada debe quedar en requiere_revision.
+    * Sin `diagnostico_trazabilidad` no puede resolverse como publicable ni persistirse como borrador listo.
 
 ---
 
@@ -285,7 +289,7 @@ Toda fase técnica debe cerrarse con prueba proporcional, evidencia del comando 
 
 ```text
 1. Estado actual consolidado y cerrado: núcleo offline textual/controlado, publicabilidad editorial y export público.
-2. Próxima decisión recomendada: [~] Etapa S — Trazabilidad fuerte entrada → idea → post (pendiente de autorización).
+2. Estado actual consolidado: [x] Etapa S — Trazabilidad fuerte entrada → idea → post.
 3. Si se aprueba la siguiente etapa, escoger conscientemente una sola vía: proveedor IA real configurable en dry_run, transcripción local real o trazabilidad reforzada antes de abrir integraciones externas.
 4. Mantener fuera del alcance: publicación/programación real, Metricool real, automatización omnicanal, UI y analítica hasta nueva auditoría explícita.
 ```

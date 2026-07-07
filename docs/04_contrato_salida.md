@@ -31,6 +31,11 @@ Al finalizar el proceso, el sistema guarda un archivo JSON de salida en `output/
     "ajustes_recomendados": null,
     "bloqueos_criticos": []
   },
+  "diagnostico_trazabilidad": {
+    "estado": "PASS",
+    "hallazgos": [],
+    "resumen": "No se detectaron hallazgos sensibles de trazabilidad."
+  },
   "aprobacion_humana": {
     "estado": "aprobado",
     "aprobado_por": "Alex Revisor",
@@ -55,15 +60,18 @@ Al finalizar el proceso, el sistema guarda un archivo JSON de salida en `output/
 
 ## 3. Matriz de Publicabilidad Editorial y Gates
 
-La persistencia de la salida y el almacenamiento de evidencias quedan controlados por un gate determinista estricto que evalúa el diagnóstico editorial y la aprobación humana mediante `resolver_estado_publicabilidad`.
+La persistencia de la salida y el almacenamiento de evidencias quedan controlados por un gate determinista estricto que evalúa el diagnóstico editorial, la trazabilidad fuerte y la aprobación humana mediante `resolver_estado_publicabilidad`.
 
 Esta matriz define la regla de publicabilidad que aplica el validador operativo antes de persistir con `LocalDraft`. En V1 local/dry_run no hay publicación real ni programación externa, pero `estado_publicabilidad` ya no es solo representacional: queda resuelto por la validación operativa.
 
-*   **PASS + aprobación simple:** $\rightarrow$ `publicable` / puede avanzar y guardar en disco localmente.
-*   **WARN + aprobación reforzada:** $\rightarrow$ `publicable` / puede avanzar con advertencias si el revisor humano ha levantado conscientemente el warning editorial.
-*   **WARN + aprobación simple:** $\rightarrow$ `requiere_revision` / bloqueado hasta obtener aprobación reforzada.
-*   **FAIL + cualquier aprobación:** $\rightarrow$ `rechazado_editorial` / bloqueado de inmediato. Está estrictamente prohibido guardar como borrador local listo.
+*   **PASS + trazabilidad PASS + aprobación simple:** $\rightarrow$ `publicable` / puede avanzar y guardar en disco localmente.
+*   **PASS + trazabilidad WARN + aprobación reforzada:** $\rightarrow$ `publicable` / puede avanzar con advertencias si el revisor humano ha levantado conscientemente el warning de trazabilidad.
+*   **WARN + trazabilidad PASS + aprobación reforzada:** $\rightarrow$ `publicable` / puede avanzar con advertencias si el revisor humano ha levantado conscientemente el warning editorial.
+*   **WARN + trazabilidad WARN + aprobación reforzada:** $\rightarrow$ `publicable` / puede avanzar con advertencias si el revisor humano ha levantado conscientemente el warning editorial y el warning de trazabilidad.
+*   **WARN editorial o WARN de trazabilidad sin aprobación reforzada:** $\rightarrow$ `requiere_revision` / bloqueado hasta obtener aprobación reforzada.
+*   **FAIL editorial o FAIL de trazabilidad con cualquier aprobación:** $\rightarrow$ `rechazado_editorial` / bloqueado de inmediato. Está estrictamente prohibido guardar como borrador local listo.
 *   **Sin aprobación (ej. estado pendiente o rechazado):** $\rightarrow$ `no_publicable` / no se permite la persistencia final de salida como borrador publicable.
+*   **Sin `diagnostico_trazabilidad`:** $\rightarrow$ `no_publicable` / no se considera equivalente a PASS y no puede persistirse como borrador listo.
 
 > [!NOTE]
 > En V1 local/dry_run, `estado_publicabilidad` se resuelve antes de persistir y no implica publicación real ni programación externa.

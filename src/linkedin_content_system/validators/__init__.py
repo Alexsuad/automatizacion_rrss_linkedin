@@ -11,3 +11,7 @@ from .publicacion import (
     resolver_estado_publicabilidad,
     validar_salida_localdraft_segura
 )
+from .trazabilidad import (
+    resolver_estado_trazabilidad,
+    validar_trazabilidad_fuerte,
+)

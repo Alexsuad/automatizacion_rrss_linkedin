@@ -7,6 +7,13 @@ from linkedin_content_system.contracts import (
     EstadoRevision, NivelRiesgoGenerico, ModoPublicacion, AdaptadorActivo, EstadoSalidaLocal,
     BloqueoCritico, TipoBloqueoCritico
 )
+from linkedin_content_system.contracts.salida import TipoAprobacion
+from linkedin_content_system.contracts.trazabilidad import (
+    DiagnosticoTrazabilidad,
+    EstadoTrazabilidad,
+    HallazgoTrazabilidad,
+    TipoHallazgoTrazabilidad,
+)
 from linkedin_content_system.publishers import LocalDraftPublisher
 
 @pytest.fixture
@@ -36,11 +43,52 @@ def salida_valida(diagnostico_pass, aprobacion_aprobada):
     return SalidaLocalDraft(
         post=PostCandidato(texto="Este es un post seguro y limpio de prueba."),
         diagnostico_editorial=diagnostico_pass,
+        diagnostico_trazabilidad=_trazabilidad_pass(),
         aprobacion_humana=aprobacion_aprobada,
         modo_publicacion=ModoPublicacion.DRY_RUN,
         adaptador_activo=AdaptadorActivo.LOCALDRAFT,
         estado=EstadoSalidaLocal.BORRADOR_LOCAL
     )
+
+
+@pytest.fixture
+def diagnostico_trazabilidad_pass():
+    return DiagnosticoTrazabilidad(estado=EstadoTrazabilidad.PASS)
+
+
+@pytest.fixture
+def diagnostico_trazabilidad_warn():
+    return DiagnosticoTrazabilidad(
+        estado=EstadoTrazabilidad.WARN,
+        hallazgos=[
+            HallazgoTrazabilidad(
+                tipo=TipoHallazgoTrazabilidad.INFERENCIA_DEBIL,
+                fragmento_post="Quizá",
+                descripcion="Inferencia débil",
+                bloqueante=False,
+            )
+        ],
+        resumen="Solo hay una inferencia débil.",
+    )
+
+
+@pytest.fixture
+def diagnostico_trazabilidad_fail():
+    return DiagnosticoTrazabilidad(
+        estado=EstadoTrazabilidad.FAIL,
+        hallazgos=[
+            HallazgoTrazabilidad(
+                tipo=TipoHallazgoTrazabilidad.CIFRA_NO_SOPORTADA,
+                fragmento_post="42%",
+                descripcion="La cifra no está soportada.",
+                bloqueante=True,
+            )
+        ],
+        resumen="Se detectó una cifra no soportada.",
+    )
+
+def _trazabilidad_pass():
+    return DiagnosticoTrazabilidad(estado=EstadoTrazabilidad.PASS)
 
 def test_localdraft_crea_directorio_y_archivos(tmp_path, salida_valida):
     publisher = LocalDraftPublisher(base_dir=str(tmp_path))
@@ -100,6 +148,7 @@ def test_localdraft_bloquea_si_aprobacion_pendiente(tmp_path, diagnostico_pass):
     salida_pendiente = SalidaLocalDraft(
         post=PostCandidato(texto="Post limpio"),
         diagnostico_editorial=diagnostico_pass,
+        diagnostico_trazabilidad=_trazabilidad_pass(),
         aprobacion_humana=AprobacionHumana(estado=EstadoAprobacion.PENDIENTE),
         modo_publicacion=ModoPublicacion.DRY_RUN,
         adaptador_activo=AdaptadorActivo.LOCALDRAFT,
@@ -126,6 +175,7 @@ def test_localdraft_bloquea_si_requiere_revision_y_no_persiste(tmp_path, aprobac
     salida_warn_simple = SalidaLocalDraft(
         post=PostCandidato(texto="Post limpio"),
         diagnostico_editorial=diagnostico_warn,
+        diagnostico_trazabilidad=_trazabilidad_pass(),
         aprobacion_humana=aprobacion_aprobada,
         modo_publicacion=ModoPublicacion.DRY_RUN,
         adaptador_activo=AdaptadorActivo.LOCALDRAFT,
@@ -156,6 +206,7 @@ def test_localdraft_bloquea_si_hay_bloqueos_criticos_y_no_persiste(tmp_path, apr
     salida_bloqueada = SalidaLocalDraft(
         post=PostCandidato(texto="Post limpio"),
         diagnostico_editorial=diagnostico_bloqueado,
+        diagnostico_trazabilidad=_trazabilidad_pass(),
         aprobacion_humana=aprobacion_aprobada,
         modo_publicacion=ModoPublicacion.DRY_RUN,
         adaptador_activo=AdaptadorActivo.LOCALDRAFT,
@@ -175,6 +226,7 @@ def test_localdraft_bloquea_si_post_inseguro(tmp_path, diagnostico_pass, aprobac
     salida_pii = SalidaLocalDraft(
         post=PostCandidato(texto="Mi correo es test@correo.com"),
         diagnostico_editorial=diagnostico_pass,
+        diagnostico_trazabilidad=_trazabilidad_pass(),
         aprobacion_humana=aprobacion_aprobada,
         modo_publicacion=ModoPublicacion.DRY_RUN,
         adaptador_activo=AdaptadorActivo.LOCALDRAFT,
@@ -187,6 +239,7 @@ def test_localdraft_bloquea_si_post_inseguro(tmp_path, diagnostico_pass, aprobac
     salida_secreto = SalidaLocalDraft(
         post=PostCandidato(texto="Mi token sk-projabcdefghijklmnopqrstuvwx"),
         diagnostico_editorial=diagnostico_pass,
+        diagnostico_trazabilidad=_trazabilidad_pass(),
         aprobacion_humana=aprobacion_aprobada,
         modo_publicacion=ModoPublicacion.DRY_RUN,
         adaptador_activo=AdaptadorActivo.LOCALDRAFT,
@@ -199,6 +252,7 @@ def test_localdraft_bloquea_si_post_inseguro(tmp_path, diagnostico_pass, aprobac
     salida_ruta = SalidaLocalDraft(
         post=PostCandidato(texto="Ver archivo en file:///home/user/test"),
         diagnostico_editorial=diagnostico_pass,
+        diagnostico_trazabilidad=_trazabilidad_pass(),
         aprobacion_humana=aprobacion_aprobada,
         modo_publicacion=ModoPublicacion.DRY_RUN,
         adaptador_activo=AdaptadorActivo.LOCALDRAFT,
@@ -206,6 +260,155 @@ def test_localdraft_bloquea_si_post_inseguro(tmp_path, diagnostico_pass, aprobac
     )
     with pytest.raises(ValueError, match="rutas locales"):
         publisher.guardar(salida_ruta, id_entrada="107")
+
+def test_localdraft_bloquea_si_falta_diagnostico_trazabilidad(
+    tmp_path,
+    diagnostico_pass,
+    aprobacion_aprobada,
+):
+    publisher = LocalDraftPublisher(base_dir=str(tmp_path))
+    salida = SalidaLocalDraft(
+        post=PostCandidato(texto="Este es un post seguro y limpio de prueba."),
+        diagnostico_editorial=diagnostico_pass,
+        diagnostico_trazabilidad=None,
+        aprobacion_humana=aprobacion_aprobada,
+        modo_publicacion=ModoPublicacion.DRY_RUN,
+        adaptador_activo=AdaptadorActivo.LOCALDRAFT,
+        estado=EstadoSalidaLocal.BORRADOR_LOCAL,
+    )
+
+    with pytest.raises(ValueError, match="diagnostico_trazabilidad"):
+        publisher.guardar(salida, id_entrada="107_missing_trace")
+
+def test_localdraft_persiste_diagnostico_trazabilidad_pass(
+    tmp_path,
+    diagnostico_pass,
+    aprobacion_aprobada,
+    diagnostico_trazabilidad_pass,
+):
+    publisher = LocalDraftPublisher(base_dir=str(tmp_path))
+    salida = SalidaLocalDraft(
+        post=PostCandidato(texto="Este es un post seguro y limpio de prueba."),
+        diagnostico_editorial=diagnostico_pass,
+        diagnostico_trazabilidad=diagnostico_trazabilidad_pass,
+        aprobacion_humana=aprobacion_aprobada,
+        modo_publicacion=ModoPublicacion.DRY_RUN,
+        adaptador_activo=AdaptadorActivo.LOCALDRAFT,
+        estado=EstadoSalidaLocal.BORRADOR_LOCAL,
+    )
+
+    manifest = publisher.guardar(salida, id_entrada="108")
+
+    assert (tmp_path / "localdraft_108" / "salida_v1.json").exists()
+    assert manifest.id_entrada == "108"
+
+
+def test_localdraft_persiste_trazabilidad_warn_con_aprobacion_reforzada(
+    tmp_path,
+    diagnostico_trazabilidad_warn,
+):
+    diagnostico_warn = DiagnosticoEditorial(
+        claridad_idea=EstadoRevision.WARN,
+        audiencia=EstadoRevision.PASS,
+        hook=EstadoRevision.PASS,
+        voz_cliente=EstadoRevision.PASS,
+        autenticidad=EstadoRevision.PASS,
+        cta=EstadoRevision.PASS,
+        compliance=EstadoRevision.PASS,
+        riesgo_generico=NivelRiesgoGenerico.BAJO,
+        estado_revision=EstadoRevision.WARN,
+    )
+    publisher = LocalDraftPublisher(base_dir=str(tmp_path))
+    salida = SalidaLocalDraft(
+        post=PostCandidato(texto="Quizá sea una mejora útil para equipos pequeños."),
+        diagnostico_editorial=diagnostico_warn,
+        diagnostico_trazabilidad=diagnostico_trazabilidad_warn,
+        aprobacion_humana=AprobacionHumana(
+            estado=EstadoAprobacion.APROBADO,
+            aprobado_por="Alex",
+            fecha_aprobacion="2026-07-04T11:00:00Z",
+            tipo_aprobacion=TipoAprobacion.REFORZADA,
+            revision_reforzada_requerida=True,
+            motivo_revision_reforzada="Se aceptó la inferencia débil.",
+        ),
+        modo_publicacion=ModoPublicacion.DRY_RUN,
+        adaptador_activo=AdaptadorActivo.LOCALDRAFT,
+        estado=EstadoSalidaLocal.BORRADOR_LOCAL,
+    )
+
+    manifest = publisher.guardar(salida, id_entrada="112")
+
+    assert (tmp_path / "localdraft_112" / "manifest.json").exists()
+    assert manifest.id_entrada == "112"
+
+
+def test_localdraft_bloquea_si_trazabilidad_fail_y_no_persiste(
+    tmp_path,
+    diagnostico_pass,
+    aprobacion_aprobada,
+    diagnostico_trazabilidad_fail,
+):
+    publisher = LocalDraftPublisher(base_dir=str(tmp_path))
+    salida = SalidaLocalDraft(
+        post=PostCandidato(texto="Aumentamos 42% en un mes."),
+        diagnostico_editorial=diagnostico_pass,
+        diagnostico_trazabilidad=diagnostico_trazabilidad_fail,
+        aprobacion_humana=aprobacion_aprobada,
+        modo_publicacion=ModoPublicacion.DRY_RUN,
+        adaptador_activo=AdaptadorActivo.LOCALDRAFT,
+        estado=EstadoSalidaLocal.BORRADOR_LOCAL,
+    )
+
+    with pytest.raises(ValueError, match="trazabilidad"):
+        publisher.guardar(salida, id_entrada="109")
+
+    assert not (tmp_path / "localdraft_109").exists()
+
+
+def test_localdraft_warn_trazabilidad_requiere_aprobacion_reforzada_y_persiste(
+    tmp_path,
+    diagnostico_pass,
+    diagnostico_trazabilidad_warn,
+):
+    publisher = LocalDraftPublisher(base_dir=str(tmp_path))
+    salida_simple = SalidaLocalDraft(
+        post=PostCandidato(texto="Quizá sea una mejora útil para equipos pequeños."),
+        diagnostico_editorial=diagnostico_pass,
+        diagnostico_trazabilidad=diagnostico_trazabilidad_warn,
+        aprobacion_humana=AprobacionHumana(
+            estado=EstadoAprobacion.APROBADO,
+            aprobado_por="Alex",
+            fecha_aprobacion="2026-07-04T11:00:00Z",
+        ),
+        modo_publicacion=ModoPublicacion.DRY_RUN,
+        adaptador_activo=AdaptadorActivo.LOCALDRAFT,
+        estado=EstadoSalidaLocal.BORRADOR_LOCAL,
+    )
+
+    with pytest.raises(ValueError, match="trazabilidad"):
+        publisher.guardar(salida_simple, id_entrada="110")
+
+    salida_reforzada = SalidaLocalDraft(
+        post=PostCandidato(texto="Quizá sea una mejora útil para equipos pequeños."),
+        diagnostico_editorial=diagnostico_pass,
+        diagnostico_trazabilidad=diagnostico_trazabilidad_warn,
+        aprobacion_humana=AprobacionHumana(
+            estado=EstadoAprobacion.APROBADO,
+            aprobado_por="Alex",
+            fecha_aprobacion="2026-07-04T11:00:00Z",
+            tipo_aprobacion=TipoAprobacion.REFORZADA,
+            revision_reforzada_requerida=True,
+            motivo_revision_reforzada="Se aceptó la inferencia débil.",
+        ),
+        modo_publicacion=ModoPublicacion.DRY_RUN,
+        adaptador_activo=AdaptadorActivo.LOCALDRAFT,
+        estado=EstadoSalidaLocal.BORRADOR_LOCAL,
+    )
+
+    manifest = publisher.guardar(salida_reforzada, id_entrada="111")
+
+    assert (tmp_path / "localdraft_111" / "manifest.json").exists()
+    assert manifest.id_entrada == "111"
 
 def test_localdraft_bloquea_path_traversal(tmp_path, salida_valida):
     publisher = LocalDraftPublisher(base_dir=str(tmp_path))

@@ -3,6 +3,10 @@ from linkedin_content_system.contracts import (
     DiagnosticoEditorial, EstadoRevision, NivelRiesgoGenerico, TipoAprobacion,
 )
 from linkedin_content_system.contracts.salida import EstadoPublicabilidad
+from linkedin_content_system.contracts.trazabilidad import (
+    DiagnosticoTrazabilidad,
+    EstadoTrazabilidad,
+)
 from .privacidad import validar_texto_sin_pii_basica, validar_texto_sin_secretos_basicos
 from .estructural import validar_sin_rutas_locales
 
@@ -29,6 +33,7 @@ def validar_modo_dry_run_local(salida: SalidaLocalDraft) -> None:
 def resolver_estado_publicabilidad(
     diagnostico: DiagnosticoEditorial,
     aprobacion: AprobacionHumana,
+    diagnostico_trazabilidad: DiagnosticoTrazabilidad | None = None,
 ) -> EstadoPublicabilidad:
     if diagnostico.bloqueos_criticos:
         return EstadoPublicabilidad.RECHAZADO_EDITORIAL
@@ -45,10 +50,25 @@ def resolver_estado_publicabilidad(
     if diagnostico.autenticidad == EstadoRevision.FAIL:
         return EstadoPublicabilidad.RECHAZADO_EDITORIAL
 
+    if diagnostico_trazabilidad is not None and diagnostico_trazabilidad.estado == EstadoTrazabilidad.FAIL:
+        return EstadoPublicabilidad.RECHAZADO_EDITORIAL
+
+    if diagnostico_trazabilidad is None:
+        return EstadoPublicabilidad.NO_PUBLICABLE
+
     if aprobacion.estado != EstadoAprobacion.APROBADO:
         return EstadoPublicabilidad.NO_PUBLICABLE
 
+    if diagnostico_trazabilidad is not None and diagnostico_trazabilidad.estado == EstadoTrazabilidad.WARN:
+        if aprobacion.tipo_aprobacion != TipoAprobacion.REFORZADA:
+            return EstadoPublicabilidad.REQUIERE_REVISION
+
     if diagnostico.estado_revision == EstadoRevision.WARN:
+        if aprobacion.tipo_aprobacion != TipoAprobacion.REFORZADA:
+            return EstadoPublicabilidad.REQUIERE_REVISION
+        return EstadoPublicabilidad.PUBLICABLE
+
+    if diagnostico_trazabilidad.estado == EstadoTrazabilidad.WARN:
         if aprobacion.tipo_aprobacion != TipoAprobacion.REFORZADA:
             return EstadoPublicabilidad.REQUIERE_REVISION
         return EstadoPublicabilidad.PUBLICABLE
@@ -56,7 +76,11 @@ def resolver_estado_publicabilidad(
     return EstadoPublicabilidad.PUBLICABLE
 
 
-def validar_diagnostico_editorial_publicable(diagnostico: DiagnosticoEditorial, aprobacion: AprobacionHumana) -> None:
+def validar_diagnostico_editorial_publicable(
+    diagnostico: DiagnosticoEditorial,
+    aprobacion: AprobacionHumana,
+    diagnostico_trazabilidad: DiagnosticoTrazabilidad | None = None,
+) -> None:
     if diagnostico.riesgo_generico == NivelRiesgoGenerico.ALTO:
         raise ValueError("Publicación denegada: nivel de riesgo genérico es alto.")
     if diagnostico.compliance == EstadoRevision.FAIL:
@@ -64,10 +88,22 @@ def validar_diagnostico_editorial_publicable(diagnostico: DiagnosticoEditorial, 
     if diagnostico.autenticidad == EstadoRevision.FAIL:
         raise ValueError("Publicación denegada: autenticidad es FAIL.")
 
-    estado_publicabilidad = resolver_estado_publicabilidad(diagnostico, aprobacion)
+    if diagnostico_trazabilidad is not None and diagnostico_trazabilidad.estado == EstadoTrazabilidad.FAIL:
+        raise ValueError("Publicación denegada: la trazabilidad es FAIL.")
+
+    if diagnostico_trazabilidad is None:
+        raise ValueError("Publicación denegada: falta diagnostico_trazabilidad.")
+
+    estado_publicabilidad = resolver_estado_publicabilidad(
+        diagnostico,
+        aprobacion,
+        diagnostico_trazabilidad=diagnostico_trazabilidad,
+    )
     if estado_publicabilidad == EstadoPublicabilidad.PUBLICABLE:
         return
     if estado_publicabilidad == EstadoPublicabilidad.REQUIERE_REVISION:
+        if diagnostico_trazabilidad is not None and diagnostico_trazabilidad.estado == EstadoTrazabilidad.WARN:
+            raise ValueError("Publicación denegada: la trazabilidad requiere aprobación reforzada.")
         raise ValueError(
             "Publicación denegada: el estado_revision es WARN pero no se cuenta con una aprobación reforzada."
         )
@@ -75,7 +111,7 @@ def validar_diagnostico_editorial_publicable(diagnostico: DiagnosticoEditorial, 
         if diagnostico.bloqueos_criticos:
             raise ValueError("Publicación denegada: se detectaron bloqueos críticos en el diagnóstico editorial.")
         raise ValueError("Publicación denegada: estado_revision es FAIL.")
-    raise ValueError("Publicación denegada: la aprobación humana no está aprobada.")
+    raise ValueError("Publicación denegada: la aprobación humana no está aprobada o falta trazabilidad.")
 
 def _validar_campo_persistible(campo) -> None:
     if campo is None:
@@ -93,9 +129,23 @@ def validar_textos_persistibles_sin_pii_ni_secretos(salida: SalidaLocalDraft) ->
     _validar_campo_persistible(salida.diagnostico_editorial.motivo)
     _validar_campo_persistible(salida.diagnostico_editorial.ajustes_recomendados)
     _validar_campo_persistible(salida.aprobacion_humana.comentarios)
+    if salida.diagnostico_trazabilidad is not None:
+        _validar_campo_persistible(salida.diagnostico_trazabilidad.resumen)
+        for hallazgo in salida.diagnostico_trazabilidad.hallazgos:
+            _validar_campo_persistible(hallazgo.fragmento_post)
+            _validar_campo_persistible(hallazgo.descripcion)
+            _validar_campo_persistible(hallazgo.soporte_encontrado)
 
 def validar_salida_localdraft_segura(salida: SalidaLocalDraft) -> None:
     validar_modo_dry_run_local(salida)
-    salida.estado_publicabilidad = resolver_estado_publicabilidad(salida.diagnostico_editorial, salida.aprobacion_humana)
-    validar_diagnostico_editorial_publicable(salida.diagnostico_editorial, salida.aprobacion_humana)
+    salida.estado_publicabilidad = resolver_estado_publicabilidad(
+        salida.diagnostico_editorial,
+        salida.aprobacion_humana,
+        diagnostico_trazabilidad=salida.diagnostico_trazabilidad,
+    )
+    validar_diagnostico_editorial_publicable(
+        salida.diagnostico_editorial,
+        salida.aprobacion_humana,
+        diagnostico_trazabilidad=salida.diagnostico_trazabilidad,
+    )
     validar_textos_persistibles_sin_pii_ni_secretos(salida)

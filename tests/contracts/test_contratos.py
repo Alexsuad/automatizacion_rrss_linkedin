@@ -7,6 +7,11 @@ from linkedin_content_system.contracts import (
     ManifestEvidencia, EstadoEvidencia, BloqueoCritico, TipoBloqueoCritico
 )
 from linkedin_content_system.contracts.salida import EstadoPublicabilidad, TipoAprobacion
+from linkedin_content_system.contracts.trazabilidad import DiagnosticoTrazabilidad, EstadoTrazabilidad
+
+
+def _trazabilidad_pass():
+    return DiagnosticoTrazabilidad(estado=EstadoTrazabilidad.PASS)
 
 
 def test_entrada_valida_con_intencion_completa():
@@ -144,6 +149,7 @@ def test_salida_localdraft_valida():
     salida = SalidaLocalDraft(
         post=PostCandidato(texto="Este es mi post de LinkedIn."),
         diagnostico_editorial=diag,
+        diagnostico_trazabilidad=_trazabilidad_pass(),
         aprobacion_humana=AprobacionHumana(
             estado=EstadoAprobacion.APROBADO,
             aprobado_por="Alex",
@@ -179,6 +185,7 @@ def test_salida_rechaza_modo_publicacion_invalido():
         SalidaLocalDraft(
             post=PostCandidato(texto="Post"),
             diagnostico_editorial=diag,
+            diagnostico_trazabilidad=_trazabilidad_pass(),
             aprobacion_humana=AprobacionHumana(
                 estado=EstadoAprobacion.APROBADO,
                 aprobado_por="Alex",
@@ -206,6 +213,7 @@ def test_salida_rechaza_adaptador_no_local():
         SalidaLocalDraft(
             post=PostCandidato(texto="Post"),
             diagnostico_editorial=diag,
+            diagnostico_trazabilidad=_trazabilidad_pass(),
             aprobacion_humana=AprobacionHumana(
                 estado=EstadoAprobacion.APROBADO,
                 aprobado_por="Alex",
@@ -213,6 +221,34 @@ def test_salida_rechaza_adaptador_no_local():
             ),
             modo_publicacion=ModoPublicacion.DRY_RUN,
             adaptador_activo="metricool",
+            estado=EstadoSalidaLocal.BORRADOR_LOCAL,
+            estado_publicabilidad=EstadoPublicabilidad.PUBLICABLE
+        )
+
+def test_salida_rechaza_publicable_sin_diagnostico_trazabilidad():
+    diag = DiagnosticoEditorial(
+        claridad_idea=EstadoRevision.PASS,
+        audiencia=EstadoRevision.PASS,
+        hook=EstadoRevision.PASS,
+        voz_cliente=EstadoRevision.PASS,
+        autenticidad=EstadoRevision.PASS,
+        cta=EstadoRevision.PASS,
+        compliance=EstadoRevision.PASS,
+        riesgo_generico=NivelRiesgoGenerico.BAJO,
+        estado_revision=EstadoRevision.PASS
+    )
+    with pytest.raises(ValidationError, match="diagnostico_trazabilidad"):
+        SalidaLocalDraft(
+            post=PostCandidato(texto="Post"),
+            diagnostico_editorial=diag,
+            diagnostico_trazabilidad=None,
+            aprobacion_humana=AprobacionHumana(
+                estado=EstadoAprobacion.APROBADO,
+                aprobado_por="Alex",
+                fecha_aprobacion="2026-07-04T01:38:00Z"
+            ),
+            modo_publicacion=ModoPublicacion.DRY_RUN,
+            adaptador_activo=AdaptadorActivo.LOCALDRAFT,
             estado=EstadoSalidaLocal.BORRADOR_LOCAL,
             estado_publicabilidad=EstadoPublicabilidad.PUBLICABLE
         )
@@ -238,6 +274,7 @@ def test_salida_estados_publicabilidad():
         salida = SalidaLocalDraft(
             post=PostCandidato(texto="Post"),
             diagnostico_editorial=diag,
+            diagnostico_trazabilidad=_trazabilidad_pass(),
             aprobacion_humana=AprobacionHumana(
                 estado=EstadoAprobacion.APROBADO,
                 aprobado_por="Alex",

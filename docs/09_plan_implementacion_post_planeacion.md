@@ -2,15 +2,16 @@
 
 ## 1. Punto de partida actual
 
-El proyecto ya no está en planeación inicial. Ya existe una base funcional offline validada al cierre del último microciclo con 61 tests deterministas aprobados:
+El proyecto ya no está en planeación inicial. Ya existe un núcleo V1 offline textual/controlado cerrado, validado con 275 tests deterministas aprobados y con la cadena operativa resuelta antes de persistir LocalDraft:
 
 ```text
-audio/texto/transcripción
+audio/texto/controlado
 → contratos
 → validadores
 → flujo local simulado
 → diagnóstico editorial
 → aprobación humana
+→ resolución de publicabilidad
 → LocalDraftPublisher
 → evidencia local
 ```
@@ -28,9 +29,55 @@ El estado del repositorio cuenta con gobernanza documental robusta:
 * `docs/architecture/ADR-000_Decisiones_Tecnicas_Base.md`
 * `AGENTS.md`
 
-El problema actual que resuelve este documento es la definición del mapa completo de implementación paso a paso desde el estado actual offline hasta el sistema usable final.
+El problema que resuelve este documento ya no es "qué imaginar", sino dejar un mapa vigente y confiable de dónde estamos, qué quedó cerrado y cuál es la siguiente decisión real.
 
 Antes de trabajar con contexto real de cliente o fuentes externas, ejecutar Fase J.
+
+## 1.1 Estado actual del proyecto
+
+- [x] Núcleo V1 offline textual/controlado cerrado.
+- [x] Pipeline offline con contexto cerrado.
+- [x] Sistema de publicabilidad editorial cerrado.
+- [x] Persistencia LocalDraft protegida: solo `publicable` puede persistir como borrador local listo.
+- [x] Tests actuales esperados: 275 passed.
+- [x] No hay publicación real.
+- [x] No hay Metricool real.
+- [x] No hay IA real conectada.
+- [x] No hay transcripción local real conectada.
+- [x] No hay automatización omnicanal.
+- [x] Fase B — Puerto IA portable / MockAdapter offline.
+- [x] Fase C — Generación mock de post.
+- [x] Fase D — Extracción determinista de idea central.
+- [x] Fase E — Intención editorial determinista.
+- [x] Fase F — Diagnóstico editorial base.
+- [x] Fase G — Aprobación humana.
+- [x] Fase H — Evidencia de generación / salida local.
+- [x] Fase I — Exports públicos de F/G/H.
+- [x] Fase J — Contexto de trabajo aislado / anticontaminación.
+- [x] Fase K — Compatibilidad de contexto.
+- [x] Fase L — Cambio/reset de contexto.
+- [x] Fase M — Exports públicos de contexto.
+- [x] Fase N — Evidencia de contexto usado.
+- [x] Fase O — Exports de evidencia de contexto.
+- [x] Fase P — Pipeline offline con contexto.
+- [x] Fase Q — Exports públicos del pipeline.
+- [x] Fase R — Mapa técnico de contexto/pipeline offline.
+- [x] Saneamiento Marketing/RRSS/Producto — criterios editoriales.
+- [x] Saneamiento Marketing/RRSS/Producto — contrato de publicabilidad.
+- [x] Saneamiento Marketing/RRSS/Producto — bloqueos críticos editoriales.
+- [x] Saneamiento Marketing/RRSS/Producto — validación operativa antes de persistir LocalDraft.
+- [x] Saneamiento Marketing/RRSS/Producto — documentación alineada y export público.
+- [~] Próxima decisión — Etapa S: trazabilidad fuerte entrada → idea → post (pendiente de autorización).
+- [ ] Proveedor IA real configurable en modo dry_run.
+- [ ] Transcripción local real.
+- [ ] Adaptador externo tipo Metricool dry_run.
+- [ ] Publicación/programación real.
+- [ ] Métricas/analítica posterior.
+- [ ] UI o interfaz operativa.
+- [ ] Skills editoriales reales de producto, solo cuando haya contrato individual aprobado.
+
+> [!WARNING]
+> Advertencia de trazabilidad: algunas letras de fases antiguas en versiones previas del plan no corresponden al mapa real ejecutado. Este documento queda actualizado como fuente vigente de verdad. Las fases I y L del mapa real ya están cerradas; no deben confundirse con propuestas antiguas de “transcripción local real” o “proveedor IA real”.
 
 ---
 
@@ -130,9 +177,9 @@ Objetivo: convertir el sistema en algo más amplio y reusable.
 * **Resultado esperado:** Tests end-to-end simulados que generen `post.md`, `diagnostico.json`, `manifest.json` y el estado final de publicabilidad.
 
 ### Fase I — Transcripción local
-* **Objetivo:** Aceptar archivos de audio locales y convertirlos en texto limpio.
-* **Implementación:** Adaptador de transcripción offline (Faster-Whisper local como candidato).
-* **Control:** Sanitización de PII post-transcripción, control de idioma, metadatos y trazabilidad audio → texto.
+* **Objetivo real cerrado:** Exports públicos de F/G/H.
+* **Resultado:** Exportar de forma pública los contratos y evidencias de Fase F, Fase G y Fase H.
+* **Estado del mapa real:** cerrado como hito de trazabilidad; no debe reinterpretarse como transcripción local.
 
 ### Fase J — Contexto de trabajo aislado / anticontaminación V0
 * **Objetivo:** Crear una frontera explícita para separar cliente, página/canal, tema, tono, campaña y contexto activo antes de usar datos reales o fuentes externas.
@@ -140,49 +187,52 @@ Objetivo: convertir el sistema en algo más amplio y reusable.
 * **Debe cubrir:** contexto activo; contexto prohibido; reset/cambio de contexto; prevención de mezcla cliente A / cliente B; prevención de mezcla página personal / página empresa; prevención de mezcla campaña / tema / tono; evidencia de qué contexto fue usado.
 * **No objetivos:** no conectar Google Drive todavía; no conectar Notion todavía; no crear UI; no persistir contexto real; no generar posts con datos reales; no publicar; no mezclar contexto entre clientes.
 
-### Fase K — Trazabilidad audio/texto → post
-* **Objetivo:** Comprobar sistemáticamente que el post final representa con fidelidad la idea original del autor.
-* **Control:** Detección de ideas inventadas, autoridad fingida, anécdotas inexistentes o afirmaciones sin fuente en el audio de origen.
-* **Resultado esperado:** Trazabilidad `PASS` / `WARN` / `FAIL` adjunta al diagnóstico.
+### Fase K — Compatibilidad de contexto
+* **Objetivo:** Validar que el contexto activo y el contexto prohibido se distingan sin ambigüedad.
+* **Control:** Prevención de mezcla cliente A / cliente B, página personal / página empresa, campaña / tema / tono.
+* **Resultado esperado:** Estados de compatibilidad claros y tests de aislamiento.
 
-### Fase L — Proveedor IA real configurable
-* **Objetivo:** Integrar APIs externas (OpenAI, Gemini, DeepSeek) de manera modular.
-* **Reglas:** API keys configurables mediante variables de entorno (fuera del repositorio), control de timeouts y manejo de errores de red con fallbacks de contingencia.
-* **Resultado esperado:** Adaptador de proveedor IA real acoplable al puerto de IA sin modificar el core del sistema.
+### Fase L — Cambio/reset de contexto
+* **Objetivo:** Permitir reset y cambio explícito del contexto de trabajo sin mezclar clientes, campañas o tonos.
+* **Resultado esperado:** Flujo determinista de cambio de contexto con evidencia del contexto usado.
 
-### Fase M — Configuración segura
-* **Objetivo:** Asegurar la portabilidad del entorno y evitar la fuga de credenciales.
-* **Resultado esperado:** Archivos `.env.example` robustos, exclusión estricta en `.gitignore`, validadores de configuración en el arranque del sistema y tests que comprueben la ausencia de secretos en evidencias y logs.
+### Fase M — Exports públicos de contexto
+* **Objetivo:** Exponer públicamente los contratos y resultados del contexto de trabajo.
+* **Resultado esperado:** Exports públicos estables y consumibles desde el paquete de contratos.
 
-### Fase N — Generación real de post LinkedIn
-* **Objetivo:** Conectar el proveedor IA real al pipeline para generar posts candidato basados en la idea e intención real del autor.
+### Fase N — Evidencia de contexto usado
+* **Objetivo:** Registrar qué contexto concreto fue usado en cada ejecución.
+* **Resultado esperado:** Evidencia trazable, sin rutas locales absolutas ni secretos.
 
-### Fase O — Revisión y regeneración
-* **Objetivo:** Permitir al usuario solicitar ajustes específicos al post candidato (ajustar hook, suavizar tono, acortar CTA) y mantener un historial de versiones del borrador.
+### Fase O — Exports de evidencia de contexto
+* **Objetivo:** Publicar las evidencias de contexto usado sin contaminar el core.
+* **Resultado esperado:** Exportaciones consistentes de la evidencia de contexto.
 
-### Fase P — Borrador LinkedIn completo
-* **Objetivo:** Consolidar el paquete de salida final del post textual listo para publicarse.
-* **Estados:** `borrador_local`, `requiere_revision`, `rechazado_editorial`, `publicable`, `no_publicable`.
+### Fase P — Pipeline offline con contexto
+* **Objetivo:** Unir el contexto de trabajo aislado al pipeline offline.
+* **Resultado esperado:** Ejecución offline con contexto controlado de extremo a extremo.
 
-### Fase Q — Timing y programación sugerida
-* **Objetivo:** Recomendar la mejor ventana horaria y fecha para la publicación basándose en preferencias B2B y directrices del autor.
+### Fase Q — Exports públicos del pipeline
+* **Objetivo:** Exponer públicamente los contratos y evidencias del pipeline offline.
+* **Resultado esperado:** Export público coherente de la tubería offline.
 
-### Fase R — Adapter Metricool dry_run
-* **Objetivo:** Preparar el payload de programación de Metricool y guardarlo localmente para auditoría física.
-* **Regla:** Bloqueo físico estricto si no hay aprobación humana previa, si el diagnóstico es `FAIL`, o ante sospecha de PII/secretos.
+### Fase R — Mapa técnico de contexto/pipeline offline
+* **Objetivo:** Consolidar el mapa técnico real de contexto y pipeline offline.
+* **Resultado esperado:** Documento técnico de referencia para el estado ejecutado.
 
-### Fase S — Publicación/programación real controlada
-* **Objetivo:** Habilitar el envío real del post programado a la API de Metricool.
-* **Requisitos:** Gate manual explícito superado, dry_run previo correcto, credenciales válidas y almacenamiento de la evidencia del ID de publicación externa en el manifest de trazabilidad.
-
-### Fase T — Recurso visual offline
-* **Objetivo:** Asociar metadatos visuales, prompts de generación de imagen o marcadores de posición sin invocar herramientas externas.
-
-### Fase U — Generación visual con proveedor externo
-* **Objetivo:** Conectar adaptadores de generación de imágenes (Canva, Higgsfield, etc.) controlando derechos de uso, estilo de marca e incorporando gate de revisión visual humana.
-
-### Fase V — Carruseles
-* **Objetivo:** Estructurar slides (portada, desarrollo, cierre, CTA) para formatos interactivos en LinkedIn.
+### Roadmap futuro funcional
+* **Etapa S — Trazabilidad fuerte entrada → idea → post:** próxima decisión candidata, pendiente de autorización.
+* **Transcripción local real:** pendiente futuro, sin letra cerrada en el mapa real.
+* **Proveedor IA real configurable:** pendiente futuro, sin letra cerrada en el mapa real.
+* **Configuración segura avanzada:** pendiente futuro, no implementada.
+* **Generación real de post LinkedIn:** pendiente futuro, no implementada.
+* **Revisión y regeneración:** pendiente futuro, no implementada.
+* **Timing y programación sugerida:** pendiente futuro, no implementada.
+* **Metricool dry_run:** pendiente futuro, no implementada.
+* **Publicación/programación real:** pendiente futuro, no implementada.
+* **Recursos visuales y carruseles:** pendiente futuro, no implementados.
+* **UI o interfaz operativa:** pendiente futuro, no implementada.
+* **Métricas/analítica posterior:** pendiente futuro, no implementada.
 
 ---
 
@@ -192,7 +242,7 @@ Objetivo: convertir el sistema en algo más amplio y reusable.
 *   **Pruebas de integración offline:** Tubería completa desde la entrada simulada, pasando por el `MockModelAdapter` y el diagnóstico, hasta la persistencia física en el `LocalDraftPublisher`.
 *   **Pruebas end-to-end:** Ingesta de audio fixture, transcripción simulada, generación de post, exigencia de aprobación reforzada ante advertencias y bloqueo garantizado ante fallos.
 *   **Pruebas de seguridad:** Detección y filtrado de PII, prevención de exposición de credenciales/tokens en logs y evidencias, y auditoría de rutas absolutas locales en los artefactos generados.
-*   **Pruebas de adaptadores de red (Fases K y R):** Pruebas de integración con mocks de API de LLM y Metricool que evalúen fallos de red, timeouts, respuestas vacías y payloads corruptos sin realizar llamadas reales ni consumir tokens.
+*   **Pruebas del roadmap futuro funcional:** Pruebas de integración con mocks de API de LLM y Metricool que evalúen fallos de red, timeouts, respuestas vacías y payloads corruptos sin realizar llamadas reales ni consumir tokens.
 
 Toda fase técnica debe cerrarse con prueba proporcional, evidencia del comando ejecutado y estado PASS/WARN/BLOQUEADO.
 
@@ -225,25 +275,8 @@ Toda fase técnica debe cerrarse con prueba proporcional, evidencia del comando 
 ## 8. Orden recomendado de trabajo
 
 ```text
-1. Consolidar y auditar plan de implementación completo en docs/ (CERRADO CON ESTE DOCUMENTO).
-2. Confirmar saneamiento del flujo offline existente: tests desde raíz, bloqueo de FAIL, WARN con aprobación reforzada, evidencia limpia y estado_publicabilidad.
-3. Fase B: Módulo de IA (src/linkedin_content_system/ai/ports.py y mock_adapter.py) + tests unitarios.
-4. Fase C: Integración de generación de post con MockModelAdapter.
-5. Fase D: Ingesta de idea central (modelos de datos Pydantic y flujo).
-6. Fase E: Estructuración de intención editorial.
-7. Fase F: Diagnóstico editorial completo (reglas y matriz de estados).
-8. Fase G: Sistema de aprobación simple/reforzada y bloqueos.
-9. Fase H: Flujo end-to-end offline completo y pruebas de integración.
-10. Fase I: Integración de transcripción local (adaptador Whisper).
-11. Fase J: Contexto de trabajo aislado / anticontaminación V0.
-12. Fase K: Trazabilidad semántica e inferencia.
-13. Fase L: Adaptadores para proveedores IA reales (OpenAI/Gemini/DeepSeek).
-14. Fase M: Configuración segura de credenciales y entornos (.env).
-15. Fase N: Pruebas de generación y control en vivo con IA real.
-16. Fase O: Lógica de regeneración y revisión de post.
-17. Fase P: Salida de borrador LinkedIn final.
-18. Fase Q: Algoritmo de sugerencia de timing.
-19. Fase R: Adaptador Metricool en modo dry_run.
-20. Fase S: Publicación real controlada (API y Gate humano final).
-21. Fase T, U, V: Recursos visuales y carruseles (V2 posterior).
+1. Estado actual consolidado y cerrado: núcleo offline textual/controlado, publicabilidad editorial y export público.
+2. Próxima decisión recomendada: [~] Etapa S — Trazabilidad fuerte entrada → idea → post (pendiente de autorización).
+3. Si se aprueba la siguiente etapa, escoger conscientemente una sola vía: proveedor IA real configurable en dry_run, transcripción local real o trazabilidad reforzada antes de abrir integraciones externas.
+4. Mantener fuera del alcance: publicación/programación real, Metricool real, automatización omnicanal, UI y analítica hasta nueva auditoría explícita.
 ```

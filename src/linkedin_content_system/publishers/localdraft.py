@@ -2,8 +2,16 @@ import os
 import datetime
 import json
 from typing import Callable, Optional
-from linkedin_content_system.contracts import SalidaLocalDraft, ManifestEvidencia, EstadoEvidencia
+from linkedin_content_system.contracts import (
+    SalidaLocalDraft,
+    ManifestEvidencia,
+    EstadoEvidencia,
+    EstadoPublicabilidad,
+)
 from linkedin_content_system.validators import validar_salida_localdraft_segura
+
+
+_MARCADOR_MOCK_POST = "[BORRADOR SIMULADO DE POST]"
 
 class LocalDraftPublisher:
     def __init__(self, base_dir: str, clock: Optional[Callable[[], str]] = None):
@@ -30,7 +38,17 @@ class LocalDraftPublisher:
         if os.path.commonpath([self.base_dir, target_dir]) != self.base_dir:
             raise ValueError("Acceso denegado: intento de escribir fuera del directorio base.")
 
-        os.makedirs(target_dir, exist_ok=True)
+        if os.path.exists(target_dir):
+            raise ValueError(
+                f"Acceso denegado: el directorio destino '{os.path.basename(target_dir)}' ya existe."
+            )
+
+        os.makedirs(target_dir, exist_ok=False)
+
+        # Un borrador generado por el mock puede guardarse localmente para revisión,
+        # pero no debe persistirse como "publicable".
+        if _MARCADOR_MOCK_POST in salida.post.texto:
+            salida.estado_publicabilidad = EstadoPublicabilidad.NO_PUBLICABLE
 
         # 4. Definir rutas relativas/ficticias
         post_path = os.path.join(target_dir, "post.md")

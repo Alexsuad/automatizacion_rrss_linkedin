@@ -136,6 +136,45 @@ def test_localdraft_coincidencia_manifest(tmp_path, salida_valida):
     assert manifest_obj.estado == data["estado"]
     assert manifest_obj.timestamp == data["timestamp"]
 
+def test_localdraft_rechaza_sobrescritura_silenciosa(tmp_path, salida_valida):
+    publisher = LocalDraftPublisher(base_dir=str(tmp_path))
+
+    publisher.guardar(salida_valida, id_entrada="102_dup")
+    post_original = (tmp_path / "localdraft_102_dup" / "post.md").read_text(encoding="utf-8")
+
+    with pytest.raises(ValueError, match="ya existe"):
+        publisher.guardar(salida_valida, id_entrada="102_dup")
+
+    assert (tmp_path / "localdraft_102_dup" / "post.md").read_text(encoding="utf-8") == post_original
+
+
+def test_localdraft_marca_mock_como_no_publicable(tmp_path, diagnostico_pass, aprobacion_aprobada):
+    publisher = LocalDraftPublisher(base_dir=str(tmp_path))
+    salida_mock = SalidaLocalDraft(
+        post=PostCandidato(
+            texto=(
+                "[BORRADOR SIMULADO DE POST]\n"
+                "Contexto de sistema recibido: no\n"
+                "Fragmento de origen: Automatizacion offline\n"
+                "--- Contenido generado determinista para LinkedIn ---"
+            )
+        ),
+        diagnostico_editorial=diagnostico_pass,
+        diagnostico_trazabilidad=_trazabilidad_pass(),
+        aprobacion_humana=aprobacion_aprobada,
+        modo_publicacion=ModoPublicacion.DRY_RUN,
+        adaptador_activo=AdaptadorActivo.LOCALDRAFT,
+        estado=EstadoSalidaLocal.BORRADOR_LOCAL,
+    )
+
+    publisher.guardar(salida_mock, id_entrada="mock_001")
+
+    salida_file = tmp_path / "localdraft_mock_001" / "salida_v1.json"
+    with open(salida_file, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    assert data["estado_publicabilidad"] == "no_publicable"
+
 def test_localdraft_clock_determinista(tmp_path, salida_valida):
     fake_time = "2026-07-04T12:00:00Z"
     publisher = LocalDraftPublisher(base_dir=str(tmp_path), clock=lambda: fake_time)

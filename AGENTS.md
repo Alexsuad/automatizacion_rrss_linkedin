@@ -1,63 +1,82 @@
-# Instrucción Operativa para Agentes IA (V1)
+# Instrucción Operativa para Agentes IA
 
-## 1. Identidad y Estado del Proyecto
-* **Identidad:** Sistema V1 para convertir audio en posts de LinkedIn con revisión de calidad, aprobación humana (gate), adaptadores de publicación y evidencia local.
-* **Estado actual:** Implementación local inicial offline (Fases 0–5 cerradas). Prohibido avanzar a LLM, ADK runtime, Metricool, Whisper, Google Drive o nuevas features sin auditoría y aprobación explícita.
+## 1. Identidad y estado del proyecto
 
-* **Alcance del documento:** `AGENTS.md` no reemplaza contratos, ADR, skills, gates ni workflows; solo fija el marco operativo global.
-* **Política antes que código:** Primero contrato → luego gate → luego script → luego código.
+* **Identidad actual:** Portable Content Publisher: sistema portable y agnóstico de transformación de contenido, orientado a convertir distintas fuentes de entrada en piezas publicables, revisables y reutilizables.
+* **Estado actual:** El repositorio contiene una base offline y determinista ya construida, especialmente fuerte en contratos, validadores, `LocalDraftPublisher`, trazabilidad y control local. El producto final deseado todavía está en transición.
+* **Prioridad actual:** Recuperar el rumbo de producto sin perder seguridad, reutilizando lo útil del repositorio actual y evitando nuevas capas de sobregobernanza.
 
-## 2. Fuente de Verdad y Orden de Lectura
+> [!IMPORTANT]
+> **Directiva de transición:** La visión y el alcance vigentes se definen en `docs/00_brief_arquitectura_pre_codigo.md`, `docs/01_alcance_si_no.md`, `docs/05_fases_implementacion.md` y `docs/09_plan_implementacion_post_planeacion.md`.
+> 
+> Si un documento técnico o histórico contradice esos archivos, prevalece la documentación núcleo vigente.
+
+## 2. Orden de lectura y fuente de verdad
+
 Orden recomendado de lectura:
-1. `docs/00_brief_arquitectura_pre_codigo.md` (Visión)
-2. `docs/01_alcance_si_no.md` (Alcance)
-3. `docs/02_contrato_entrada_contenido.md` (Entrada)
-4. `docs/03_contrato_perfil_narrativo.md` (Perfil narrativo)
-5. `docs/04_contrato_salida.md` (Salida)
-6. `docs/06_contrato_calidad_post_linkedin.md` (Calidad LinkedIn)
-7. `docs/05_fases_implementacion.md` (Fases)
-8. `docs/architecture/ADR-000_Decisiones_Tecnicas_Base.md` (Decisiones técnicas)
+1. `docs/00_brief_arquitectura_pre_codigo.md`
+2. `docs/01_alcance_si_no.md`
+3. `docs/05_fases_implementacion.md`
+4. `docs/09_plan_implementacion_post_planeacion.md`
+5. `docs/02_contrato_entrada_contenido.md`
+6. `docs/03_contrato_perfil_narrativo.md`
+7. `docs/04_contrato_salida.md`
+8. `docs/06_contrato_calidad_post_linkedin.md`
+9. `docs/architecture/ADR-000_Decisiones_Tecnicas_Base.md`
+10. `docs/10_mapa_tecnico_contexto_pipeline_offline.md`
 
-*   **Documentación de Planeación Adicional:** `docs/07_gates_futuros_v1.md` y `docs/08_skills_producto_linkedin_futuras.md` son lecturas complementarias de planeación bajo demanda.
-*   **Skills de Gobernanza vs. Producto:** Existen skills físicas de gobernanza en `.agents/skills/` para auditar y controlar el trabajo actual del agente. Las skills de producto de LinkedIn son de fase futura y **no** deben crearse todavía.
+Documentos derivados o no rectores:
+* `docs/07_gates_futuros_v1.md`
+* `docs/08_skills_producto_linkedin_futuras.md`
+* `docs/Control/`
 
-## 3. Glosario Operativo
-* **Agente:** Rol con criterio propio.
-* **Skill:** Tarea repetible y acotada.
-* **Regla:** Restricción transversal.
-* **Gate:** Punto de aprobación o bloqueo.
+`docs/Control/` se trata como archivo histórico y de transición; no es fuente normativa activa para nuevas decisiones salvo auditoría explícita.
 
-## 4. IA Flexible vs. Python Determinista
-* **Lógica IA (Flexible):** Redactar post, adaptar tono, diagnosticar y sugerir CTA.
-* **Lógica Python (Determinista):** Validar estructura, campos, aprobación, evidencia, PII, rutas y estados.
+## 3. Principios operativos
 
-## 5. Trazabilidad Obligatoria
-Flujo lógico: `audio → transcripción → intención editorial inicial → idea central estructurada → post → diagnóstico → aprobación → publicación/adaptador → evidencia`.
+* **Producto antes que ritual:** El objetivo no es cerrar fases por sí mismas, sino acercar el sistema a un flujo útil real.
+* **Portabilidad real:** El sistema no debe depender de un agente, proveedor, canal o tipo único de entrada para ser valioso.
+* **LinkedIn como arranque probable, no obligatorio ni único:** LinkedIn puede ser el primer canal operativo por practicidad, pero si otra red social resulta mejor para iniciar el desarrollo, puede priorizarse sin contradecir la identidad del producto.
+* **Texto primero, otras fuentes después:** El primer flujo útil debe poder arrancar desde texto manual. Audio, video u otras fuentes entran por adaptación progresiva.
+* **Reutilizar antes de rehacer:** Contratos, validadores, adaptadores mock y `LocalDraftPublisher` deben aprovecharse cuando ayuden al nuevo rumbo.
+* **Gobernanza proporcional:** Solo se documenta, valida o gatea lo necesario para evitar errores, fugas de datos, malas publicaciones o acoplamientos dañinos.
 
-## 6. Reglas y Límites V1
-* **Canal exclusivo:** LinkedIn. Quedan excluidos: Instagram, X/Twitter, carruseles, imágenes, video, dashboards, analítica, multiusuario y MCP complejos.
-* **Primera meta futura:** Pipeline local end-to-end con `LocalDraftPublisher` y evidencia local. No usar Metricool real como primera prueba.
-* **Desacoplamiento:** No acoplar el núcleo a ningún proveedor (Gemini, OpenAI, LiteLLM, Metricool, Faster-Whisper, ADK).
-* **Contexto de cliente:** Los datos del cliente deben residir fuera del core en archivos intercambiables (ej. `contexto_cliente.md`). Google Drive o Notion son sedes futuras posibles, no runtime actual.
-* **Anticontaminación:** No introducir datos reales de cliente, marca, página, campaña o documentos externos en tests, fixtures, docs generales, prompts versionados o evidencias versionadas. Antes de trabajar con contexto real debe existir un `ContextoTrabajo` activo, aislado y validado; para pruebas usar datos sintéticos, neutros y claramente falsos.
-* **Gestión del cambio:** Si cambia el cliente, voz, sector, audiencia, oferta, canal o adaptador, evaluar impacto antes de seguir.
-* **Salida final:** No exponer al usuario final prompts internos, nombres de agentes, rutas locales, logs crudos ni estructura interna.
+## 4. Reglas de seguridad que siguen vigentes
 
-## 7. Candidatos Futuros (No Implementados)
-* **Skills candidatas:** Las skills físicas actuales en `.agents/skills/` son solo de gobernanza agéntica. Las skills de producto LinkedIn no existen todavía y se documentan únicamente en `docs/08_skills_producto_linkedin_futuras.md`. No crear skills de producto sin contrato aprobado, validación de Marketing/RRSS y uso de `crear-skill-desde-contrato`.
-* **Gates candidatos:** Validar entrada; validar PII/sanitización; validar calidad editorial; validar aprobación humana; validar publicación/dry_run; validar evidencia local; validar ausencia de rutas absolutas/secretos.
+Estas reglas siguen activas aunque el producto esté en transición:
 
-## 8. Reporte y Cierre de Tarea
-Cada reporte del agente debe declarar obligatoriamente:
+* No introducir PII, secretos, credenciales ni datos reales de cliente en tests, fixtures, docs generales, prompts versionados ni evidencias versionadas.
+* No exponer rutas locales absolutas, logs crudos ni estructura interna al usuario final.
+* No acoplar el núcleo del sistema a un proveedor externo concreto.
+* No ejecutar publicación real, programación real ni integraciones con datos reales sin aprobación explícita.
+* No crear nuevas dependencias externas o nuevas automatizaciones de alto riesgo sin justificar el valor de producto y el impacto.
+
+## 5. Qué evitar en esta etapa
+
+* Expandir `ContextoTrabajo` o el pipeline offline si no desbloquea producto real.
+* Crear nuevas skills de gobernanza o más capas documentales sin necesidad concreta.
+* Tratar cualquier documento histórico como si siguiera definiendo el rumbo.
+* Introducir omnicanal, visuales, analítica avanzada o multiusuario antes de consolidar el primer flujo útil.
+
+## 6. Diferencia entre lógica flexible y lógica determinista
+
+* **Flexible:** redacción, adaptación editorial, revisión de tono, selección de formato, generación de variantes.
+* **Determinista:** validación de estructura, PII, aprobación, rutas, persistencia local, trazabilidad, manifests y estados.
+
+## 7. Cierre y trazabilidad de tareas
+
+Cada reporte del agente debe declarar:
 1. Archivos leídos, creados o modificados.
 2. Comandos ejecutados y validaciones hechas.
 3. Estado Git y búsqueda de rutas locales absolutas.
 4. Riesgos pendientes.
 5. Veredicto:
-   * **PASS:** Cumple alcance y restricciones.
-   * **WARN:** Cumple con riesgos menores.
-   * **FAIL:** Incumple criterios de aceptación.
-   * **BLOQUEADO:** Requiere tocar archivos prohibidos o abrir código sin autorización.
+   * `PASS`: cumple alcance y restricciones.
+   * `WARN`: cumple con riesgos menores o deuda pendiente.
+   * `FAIL`: incumple criterios de aceptación.
+   * `BLOQUEADO`: requiere tocar archivos prohibidos, usar datos no autorizados o resolver una contradicción de rumbo no aclarada.
 
-## 9. Control Git
-* Ejecutar `git status --short` si existe repositorio Git. Prohibido hacer commits o push sin aprobación explícita.
+## 8. Control Git
+
+* Ejecutar `git status --short` si existe repositorio Git.
+* Prohibido hacer commit o push sin aprobación explícita.

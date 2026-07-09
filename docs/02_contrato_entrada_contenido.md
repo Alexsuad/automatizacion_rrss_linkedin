@@ -2,71 +2,73 @@
 
 ## 1. Propósito del documento
 
-Este documento define la estructura mínima y el contrato de validación que debe cumplir cualquier entrada antes de ser procesada por el flujo de generación y publicación del sistema.
+Este documento define el contrato mínimo que debe cumplir cualquier entrada antes de ser procesada por el sistema.
 
-Su función es normalizar la entrada de datos (donde el archivo de audio es el flujo principal, y se proveen entradas auxiliares para pruebas) bajo un esquema único denominado **materia prima de contenido**.
+Su función no es describir una única fuente concreta, sino establecer una forma común de normalizar materias primas distintas para que el resto del pipeline pueda operar con coherencia.
 
----
+## 2. Principio rector
 
-## 2. Principio de normalización y privacidad
+La identidad del sistema no depende de una entrada única.
 
-El flujo de procesamiento de entrada se rige bajo el siguiente esquema:
+La regla general es:
 
 ```text
-entrada_original (Audio / Nota de voz)
-↓
-normalización + transcripción local (Faster-Whisper)
-↓
-sanitización de PII / revisión de privacidad (Gate local)
-↓
-materia_prima_contenido (Estructurada bajo contrato)
+fuente_original
+-> normalización
+-> sanitización / validación
+-> materia_prima_contenido
 ```
 
-**Regla de privacidad obligatoria:** Toda nota de voz o transcripción debe auditarse localmente para evitar la fuga de información personal identificable (PII) o credenciales hacia proveedores externos (LLMs en la nube o adaptadores de publicación).
+La **materia prima de contenido** es el objeto normalizado que consume el pipeline editorial.
 
-> [!IMPORTANT]
-> El directorio de trazabilidad pública del flujo (`trace/`) bajo ninguna circunstancia debe guardar PII ni transcripciones en bruto. La transcripción bruta sólo puede existir como un artefacto local privado dentro de la carpeta del kit (`output/kit_<id>/private/raw_transcript.txt`) de forma restringida, o no guardarse.
+## 3. Tipos de entrada admitidos
 
----
+El sistema debe poder admitir progresivamente distintas fuentes.
 
-## 3. Tipos de entrada admitidos en V1
+### 3.1 Tipos previstos por contrato
 
-| Tipo de entrada | Rol en V1 | Descripción |
+| Tipo de entrada | Rol | Descripción |
 | :--- | :--- | :--- |
-| `audio` | **Flujo Principal** | Nota de voz o archivo de audio principal que se transcribe mediante Faster-Whisper local. |
-| `texto_bruto` | **Auxiliar / Pruebas** | Modo de prueba o manual para validar flujos de redacción sin usar audio. |
-| `borrador_existente` | **Auxiliar / Pruebas** | Modo de soporte para optimización de textos de LinkedIn ya escritos. |
+| `texto_manual` | Operativo inmediato | Texto escrito manualmente por el usuario para disparar el flujo útil inicial. |
+| `audio` | Expansión prioritaria | Nota de voz o archivo de audio que requiere transcripción antes de normalizarse. |
+| `transcripcion` | Soporte | Texto procedente de audio, video u otra fuente ya transcrita. |
+| `borrador_existente` | Soporte | Pieza previa que se quiere mejorar, adaptar o reutilizar. |
+| `documento_base` | Expansión futura | Documento, nota larga o material de referencia del que se extrae contenido. |
 
----
+### 3.2 Restricción operativa actual
+
+Aunque el contrato ya contempla múltiples tipos de entrada, el primer flujo útil vigente se valida con:
+
+* `texto_manual` como entrada operativa inicial;
+* LinkedIn como primer canal operativo;
+* salida local antes de cualquier integración real externa.
 
 ## 4. Estructura común de entrada normalizada
 
-El objeto normalizado que consume el orquestador (ADK) debe estructurarse bajo el siguiente formato conceptual:
+Toda entrada, venga de donde venga, debe converger en una estructura conceptual como esta:
 
 ```json
 {
-  "id_entrada": "in_lnk_001",
-  "tipo_entrada": "audio",
-  "fecha_creacion": "2026-07-03T11:15:00Z",
-  "perfil_narrativo": "perfil_profesional_linkedin",
+  "id_entrada": "in_001",
+  "tipo_entrada": "texto_manual",
+  "fecha_creacion": "2026-07-08T10:30:00Z",
+  "perfil_narrativo": "perfil_autor_principal",
   "canales_destino": ["linkedin"],
+  "texto_base": "idea normalizada y lista para procesar",
   "intencion_editorial": {
-    "estado_intencion_editorial": "completa",
-    "audiencia_objetivo": "desarrolladores backend",
-    "objetivo_del_post": "educar sobre Faster-Whisper",
-    "pilar_contenido": "tecnología",
+    "estado_intencion_editorial": "parcial",
+    "audiencia_objetivo": "fundadores B2B",
+    "objetivo_del_post": "explicar una idea operativa",
+    "pilar_contenido": "sistemas de contenido",
     "tipo_de_post": "educativo",
-    "dolor_o_tension": "la latencia en la transcripción local",
-    "idea_central": "Faster-Whisper optimiza la transcripción local de audio",
-    "cta_intencionado": "sugerir guardar si resulta de valor",
+    "dolor_o_tension": "perder tiempo en flujos poco útiles",
+    "idea_central": "primero hay que validar flujo útil, no solo control interno",
+    "cta_intencionado": "invitar a reflexión",
     "nivel_de_promocion": "nulo"
   },
-  "texto_base": "transcripción limpia del audio una vez sanitizada y revisada de PII",
   "metadatos_origen": {
-    "ruta_archivo": "input/nota_voz_001.m4a",
-    "nombre_archivo": "nota_voz_001.m4a",
-    "idioma": "es",
-    "duracion_segundos": 120
+    "origen": "manual",
+    "idioma": "es"
   },
   "estado_privacidad": {
     "sanitizado": true,
@@ -80,42 +82,99 @@ El objeto normalizado que consume el orquestador (ADK) debe estructurarse bajo e
 }
 ```
 
----
-
 ## 5. Campos mínimos obligatorios
 
 | Campo | Obligatorio | Descripción |
 | :--- | :--- | :--- |
-| `id_entrada` | Sí | Identificador único del lote de entrada. |
-| `tipo_entrada` | Sí | Tipo de entrada (`audio`, `texto_bruto`, `borrador_existente`). |
-| `perfil_narrativo` | Sí | Nombre del archivo o identificador del perfil narrativo del autor. |
-| `canales_destino` | Sí | Debe contener únicamente `["linkedin"]` en V1. |
-| `intencion_editorial`| Sí | Objeto de metadata editorial del sistema (obligatorio como bloque). Sus campos pueden venir completos o parciales. Debe incluir el campo `estado_intencion_editorial` (`completa \| parcial \| tentativa`). Si está marcado como `parcial` o `tentativa`, el sistema no inventará información y la futura skill `extraer-idea-central-linkedin` refinará el contenido usando solo input autorizado. |
-| `texto_base` | Sí | Contenido textual normalizado y libre de PII listo para procesar. |
-| `estado_privacidad`| Sí | Indicador del estado de revisión de privacidad y sanitización. |
-| `restricciones` | Sí | Reglas y gates operativos del flujo. |
+| `id_entrada` | Sí | Identificador único de la entrada. |
+| `tipo_entrada` | Sí | Tipo de fuente normalizada. |
+| `perfil_narrativo` | Sí | Identificador del perfil editorial o narrativo que debe gobernar la salida. |
+| `canales_destino` | Sí | Lista de canales para los que se quiere adaptar la pieza. Puede empezar con `linkedin` como primer canal operativo. |
+| `texto_base` | Sí | Contenido textual ya utilizable por el pipeline editorial. |
+| `intencion_editorial` | Sí | Bloque editorial del sistema. Puede estar completo, parcial o tentativo, pero debe declararse. |
+| `estado_privacidad` | Sí | Estado de sanitización y riesgos de privacidad. |
+| `restricciones` | Sí | Reglas operativas mínimas del flujo. |
 
----
+## 6. Reglas por tipo de entrada
 
-## 6. Reglas específicas para la entrada de Audio (Flujo Principal)
+### 6.1 `texto_manual`
 
-Para las entradas de tipo `audio`, se deben aplicar las siguientes directrices:
-* **Transcripción Offline:** La transcripción se realizará mediante un adaptador local (Faster-Whisper) para garantizar la privacidad y reducir costes operativos.
-* **Privacidad de la Traza:** La transcripción bruta que contenga posibles datos sensibles **no** se registrará en la traza pública (`trace/`). Solo se permite almacenar una referencia local privada restringida (`output/kit_<id>/private/raw_transcript.txt`) o descartar la versión sin sanitizar tras el filtrado.
-* **Privacidad de Origen:** No se registrarán metadatos de audio que contengan información personal o rutas locales absolutas del sistema del usuario que puedan revelar secretos o PII.
-* **Control de Errores:** Si el audio está corrupto o la transcripción falla, el flujo se detiene inmediatamente marcando un error en la traza y previniendo cualquier llamada externa.
+* No requiere transcripción.
+* Debe poder activar el primer flujo útil del sistema.
+* Es la entrada recomendada para validar producto antes de ampliar fuentes.
 
----
+### 6.2 `audio`
 
-## 7. Validaciones mínimas de entrada (Gate de Entrada)
+* Requiere transcripción antes de entrar al pipeline editorial.
+* La transcripción bruta no debe tratarse como salida pública ni evidencia abierta.
+* Debe existir control de privacidad antes de enviar esa transcripción a cualquier etapa posterior.
 
-Antes de avanzar a la etapa de generación y orquestación con ADK, el validador del sistema debe corroborar:
-1. Existencia del archivo de audio físico si `tipo_entrada == "audio"`.
-2. Validar que `canales_destino` contenga exclusivamente `linkedin`.
-3. Confirmar que el `texto_base` no esté vacío y que `estado_privacidad.sanitizado` sea `true`.
-4. El perfil narrativo especificado debe coincidir con un perfil local válido.
-5. Validar que `intencion_editorial.nivel_de_promocion` contenga uno de los valores permitidos: `nulo | bajo | medio | alto`.
-6. Regla de promoción: Si `nivel_de_promocion` es `alto`, el post debe marcarse en el diagnóstico final como `WARN` y requerir revisión humana reforzada antes de cualquier aprobación para publicación.
-7. Validar el estado de la intención: Confirmar que `intencion_editorial` posee un `estado_intencion_editorial` válido. Si está marcada como `parcial` o `tentativa`, se autoriza a refinar pero se prohíbe inventar información. El gate de entrada bloqueará el flujo si no existe ningún insumo (audio, transcripción o texto bruto) suficiente para derivar la intención.
+### 6.3 `transcripcion`
 
-Si alguna de estas comprobaciones falla, el sistema detendrá el flujo inmediatamente.
+* Puede proceder de audio, video o sistema externo.
+* Debe considerarse equivalente a una fuente intermedia, no necesariamente a una entrada final segura.
+* También debe pasar control de privacidad y normalización.
+
+### 6.4 `borrador_existente` y `documento_base`
+
+* Se aceptan como materia prima de reutilización o adaptación.
+* No autorizan inventar contexto, experiencia ni intención no presentes en la fuente.
+
+## 7. Reglas de privacidad y seguridad
+
+1. Ninguna entrada puede avanzar si contiene PII o secretos sin tratar.
+2. La materia prima normalizada debe ser apta para pasar al pipeline sin exponer datos sensibles.
+3. No deben registrarse rutas locales absolutas, tokens ni credenciales en metadatos o evidencias.
+4. Si una fuente no puede normalizarse de forma segura, el flujo debe detenerse.
+
+## 8. Reglas de intención editorial
+
+El bloque `intencion_editorial` es obligatorio como estructura, aunque sus campos no siempre lleguen completos.
+
+Estados admitidos:
+
+* `completa`
+* `parcial`
+* `tentativa`
+
+Reglas:
+
+* si está `completa`, el sistema debe respetarla;
+* si está `parcial`, el sistema puede refinarla sin inventar;
+* si está `tentativa`, el sistema puede ordenar y aclarar, pero no fabricar hechos, autoridad ni enfoque no soportado.
+
+## 9. Validaciones mínimas de entrada
+
+Antes de pasar a generación o adaptación, el sistema debe verificar:
+
+1. `id_entrada` válido y no vacío;
+2. `tipo_entrada` reconocido;
+3. `texto_base` presente o fuente suficiente para derivarlo;
+4. `estado_privacidad.sanitizado == true`;
+5. `perfil_narrativo` informado;
+6. `intencion_editorial.estado_intencion_editorial` válido;
+7. `canales_destino` informado;
+8. `nivel_de_promocion` dentro de valores permitidos si se declara.
+
+Si falla cualquiera de estas comprobaciones, la entrada no debe avanzar.
+
+## 10. Relación con el estado actual del código
+
+Este contrato ya refleja la dirección deseada del producto.
+
+Eso no implica que todo el código actual soporte todavía:
+
+* todos los tipos de entrada;
+* múltiples canales operativos;
+* transcripción real integrada;
+* publicación real.
+
+Esas capacidades se habilitarán por fases posteriores.
+
+La regla de trabajo sigue siendo:
+
+```text
+primero ajustar contrato
+después ajustar salidas y decisiones técnicas
+después tocar código
+```

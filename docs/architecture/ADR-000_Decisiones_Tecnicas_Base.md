@@ -1,46 +1,113 @@
-# ADR-000: Decisiones Técnicas Base (V1)
+# ADR-000: Decisiones Técnicas Base
 
-Este documento registra las decisiones tecnológicas y de diseño fundamentales para el **Publicador automático desde audio para LinkedIn** (V1).
+## 1. Estado del ADR
 
----
+Estado: vigente con visión corregida
 
-## Matriz de Decisiones Técnicas
+Este ADR registra las decisiones técnicas base del sistema en su nueva etapa:
 
-| Decisión | Estado | Motivo | Alternativas descartadas por ahora | Riesgo | Cuándo reevaluar |
+* producto portable y agnóstico;
+* primer flujo útil validado desde texto manual;
+* LinkedIn como primer canal operativo;
+* salida local segura antes de integraciones reales.
+
+Este documento ya no debe leerse como ADR de un “publicador automático desde audio para LinkedIn”, sino como base técnica del sistema corregido de rumbo.
+
+## 2. Contexto
+
+El repositorio actual ya contiene una base útil en:
+
+* contratos;
+* validadores;
+* `LocalDraftPublisher`;
+* trazabilidad;
+* flujo offline determinista;
+* tests.
+
+Pero el producto deseado es más amplio que ese estado actual.
+
+La arquitectura debe permitir:
+
+* múltiples fuentes de entrada;
+* transformación editorial reutilizable;
+* salidas desacopladas;
+* crecimiento por canales;
+* aprobación humana obligatoria;
+* expansión progresiva sin rehacer el núcleo.
+
+## 3. Matriz de decisiones técnicas
+
+| Decisión | Estado | Motivo | Alternativas | Riesgo | Cuándo reevaluar |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **1. Python como base** | Aceptado | Ecosistema nativo para IA, Faster-Whisper y Google ADK. | Node.js, Go. | Mayor consumo de recursos que lenguajes compilados. | Si la portabilidad en plataformas sin Python es crítica. |
-| **2. Google ADK inicial** | CANDIDATA / EVALUABLE (NO OBLIGATORIA EN V1 LOCAL) | Orquestación estructurada de agentes y sesiones de desarrollo. | LangChain, desarrollo propio desde cero. | Acoplamiento inicial a las convenciones del framework. | Al finalizar la Fase 1C si se detecta sobrecarga técnica. |
-| **3. Faster-Whisper local** | CANDIDATA / EVALUABLE (NO OBLIGATORIA EN V1 LOCAL) | Transcripción local offline barata y con alta privacidad. | OpenAI Whisper API (nube). | Requisitos de hardware local (CPU/GPU) mínimos. | Si se requiere transcribir audios de más de 30 minutos de forma masiva. |
-| **4. Pydantic para contratos**| Aceptado | Validación estricta y tipado estático en entradas/salidas. | Diccionarios JSON nativos. | Rigidez inicial si los contratos cambian frecuentemente. | Al inicio de la fase de código de los validadores. |
-| **5. LinkedIn en V1** | Aceptado | Enfoque de canal único para validar la publicación automática. | X/Twitter, Instagram. | Alcance limitado en la primera entrega. | Al consolidar la Fase 1C y entrar a planeación de V2. |
-| **6. Metricool como adaptador** | Aceptado | Evita el desarrollo propio de OAuth y apoya multi-cuenta. | API Directa de LinkedIn, Buffer. | Cambios de tarifas o de API de la plataforma Metricool. | Si se requiere control total del flujo OAuth en V2. |
-| **7. LocalDraftPublisher** | Aceptado | Base offline de testing que simula la publicación local. | Mocks en código de testing sin persistencia en disco. | Ninguno relevante. | Al iniciar la fase de pruebas de integración. |
-| **8. Puertos y adaptadores** | Aceptado | Protege el núcleo del negocio frente a dependencias externas. | Arquitectura monolítica clásica. | Mayor nivel de abstracción inicial. | Al planificar la Fase 2 (expansión omnicanal). |
-| **9. JSON/Markdown local** | Aceptado | Evidencias legibles en local sin dependencias de base de datos. | SQLite, PostgreSQL. | Gestión manual de archivos y potencial fragmentación. | Si el sistema evoluciona a multiusuario o panel web (V2). |
-| **10. Sanitización de PII** | Aceptado | Garantiza que no se envíen datos personales a LLMs externos. | Enviar transcripción en bruto. | Filtros muy restrictivos que eliminen contexto del audio. | En la Fase 1.5 (Robustez y pruebas). |
-| **11. Modo dry_run** | Aceptado | Simulación del adaptador Metricool sin publicar contenido real. | Publicación en producción directa. | Falsos positivos de conectividad. | Al iniciar el testing de integración con Metricool. |
-| **12. Exclusión de V2 en V1** | Aceptado | Acotar el desarrollo de carruseles, imágenes, UI y X a V2. | Implementación total omnicanal. | Pérdida de interés funcional en la V1 omnicanal. | Tras estabilizar el flujo real de LinkedIn (Fase 1C). |
-| **13. LiteLLM como adaptador** | CANDIDATA / EVALUABLE (NO OBLIGATORIA EN V1 LOCAL) | Evita la dependencia rígida de un proveedor de LLM específico. | SDK de Vertex / OpenAI directo en dominio. | Dependencia de una librería adicional de abstracción. | Si se estandariza el uso de un único LLM local/nube corporativo. |
-| **14. ADK Artifacts** | CANDIDATA / EVALUABLE (NO OBLIGATORIA EN V1 LOCAL) | Almacenamiento idóneo para audios, transcripciones y archivos pesados. | Almacenar binarios en base de datos. | Gestión local de archivos pesados. | Si la escalabilidad en la nube requiere almacenamiento de objetos distribuido. |
-| **15. Session State ligero** | CANDIDATA / EVALUABLE (NO OBLIGATORIA EN V1 LOCAL) | Almacenamiento en memoria para estados efímeros y referencias locales. | Persistencia en base de datos para cada paso de ejecución. | Pérdida de estado ante reinicios del proceso. | Al escalar a arquitectura multiusuario en V2. |
-| **16. Callbacks para trazas** | CANDIDATA / EVALUABLE (NO OBLIGATORIA EN V1 LOCAL) | Provee desacoplamiento total en el sistema de logs y trazabilidad. | Escritura directa de logs dentro de la lógica del dominio. | Complejidad inicial de suscripción a eventos. | Si el rendimiento se ve afectado por alto volumen de eventos. |
+| **1. Python como base** | Aceptado | El repositorio actual ya está construido sobre Python y encaja bien con validación, scripts, IA y adaptadores. | Node.js, Go. | Mayor consumo que lenguajes compilados. | Si la portabilidad multiplataforma o el rendimiento se vuelven críticos. |
+| **2. Pydantic para contratos** | Aceptado | Permite contratos explícitos y validación fuerte entre entradas, salidas y diagnósticos. | Diccionarios sin esquema. | Rigidez si el contrato cambia rápido. | Si el costo de evolución supera el beneficio de seguridad. |
+| **3. Puertos y adaptadores** | Aceptado | Protege el núcleo frente a canales, entradas, proveedores y publicadores concretos. | Acoplamiento directo a SDKs o servicios. | Más abstracción inicial. | Si el sistema deja de necesitar portabilidad, algo hoy no deseado. |
+| **4. Local-first para la primera validación** | Aceptado | El primer éxito real debe ocurrir sin publicar en vivo ni depender de red. | Empezar por integración externa real. | Puede retrasar feedback de adaptadores reales si se prolonga demasiado. | Cuando el flujo útil local ya esté consolidado. |
+| **5. LinkedIn como primer canal operativo** | Aceptado | Permite validar valor en un canal concreto sin cerrar la arquitectura a otros canales. | Omnicanal desde el inicio. | Confundir “primer canal” con “identidad permanente”. | Cuando el flujo textual útil y la salida local ya estén estabilizados. |
+| **6. Texto manual como primera entrada operativa** | Aceptado | Es la forma más rápida de validar el flujo útil antes de ampliar fuentes. | Empezar por audio, video o ingesta compleja. | Que el equipo olvide luego ampliar entradas. | Cuando el flujo textual útil esté probado en operación real. |
+| **7. Audio como entrada prioritaria de expansión** | Candidata prioritaria | Sigue siendo una fuente valiosa para el producto, pero no debe bloquear el primer éxito. | Postergar toda entrada distinta a texto. | Añadir complejidad demasiado pronto. | Al entrar en la fase de ampliación de entradas. |
+| **8. `LocalDraftPublisher` como primera salida implementada** | Aceptado | Ya existe, es segura y útil para validar persistencia local y publicabilidad. | Empezar por publicador real. | Convertirlo en dogma y no en implementación inicial. | Cuando entren payloads o adaptadores externos reales. |
+| **9. Evidencia local en JSON/Markdown** | Aceptado | Facilita inspección, trazabilidad y debugging sin base de datos obligatoria. | Persistencia temprana en DB. | Fragmentación manual si crece demasiado. | Si aparecen necesidades reales de multiusuario, búsqueda o panel. |
+| **10. Sanitización de PII y secretos como obligación transversal** | Aceptado | La seguridad no depende del canal ni del tipo de entrada. | Sanitización opcional o tardía. | Filtros demasiado agresivos. | Si se detecta pérdida significativa de contexto útil. |
+| **11. `dry_run` antes de publicación real** | Aceptado | Permite preparar salidas y adaptadores sin ejecutar acciones reales. | Ir directo a publicación en vivo. | Falsa sensación de preparación si nunca se conecta el adaptador real. | Cuando el flujo local útil y la aprobación humana ya estén maduros. |
+| **12. Adaptador de publicación desacoplado** | Aceptado | El sistema no debe depender de un único publicador externo. | Integración directa en dominio. | Más trabajo de modelado de salida. | Cuando exista el primer payload real de publicación. |
+| **13. LiteLLM como opción de proveedor IA** | Candidata evaluable | Puede ayudar a mantener portabilidad entre proveedores de generación. | SDK directo de un único proveedor. | Otra capa de abstracción. | Cuando se conecte el primer proveedor real de IA. |
+| **14. Faster-Whisper u otro transcriptor local** | Candidata evaluable | Puede resolver la expansión a audio con privacidad y coste controlado. | Whisper API remota, otro motor local. | Requisitos de hardware y mantenimiento. | Cuando la fase de audio entre en ejecución real. |
+| **15. Framework agéntico como implementación opcional, no identidad** | Aceptado | El producto debe sobrevivir a Claude, ADK u otro entorno. | Acoplar la arquitectura al framework del prototipo. | Duplicar lógica entre software y agentes si no se diseña bien. | Si aparece un runtime estable que realmente simplifique operación sin acoplar producto. |
 
----
+## 4. Reglas de arquitectura
 
-## Reglas de Arquitectura
+1. **El núcleo no depende de un proveedor ni de un entorno agéntico.**
+2. **La entrada se modela por contrato común, no por fuente única.**
+3. **La salida se modela por contrato portable, no por una sola implementación concreta.**
+4. **La aprobación humana sigue siendo un gate obligatorio para cualquier salida real.**
+5. **Toda integración externa debe entrar por adaptador desacoplado.**
+6. **Las reglas de seguridad y privacidad son invariantes del sistema.**
 
-1. **Principio de Aislamiento:** El núcleo (dominio) no conoce a los adaptadores. Metricool y Faster-Whisper deberán consumir los contratos definidos en [02_contrato_entrada_contenido.md](../02_contrato_entrada_contenido.md) y [04_contrato_salida.md](../04_contrato_salida.md); cuando exista código, esos contratos se implementarán mediante interfaces internas.
-2. **Seguridad Absoluta:** Ningún token, API Key de LLM o PII de audio bruta debe registrarse en la carpeta de trazas públicas (`trace/`).
-3. **Fuente de Verdad:** Este repositorio rige el comportamiento técnico del sistema. Toda desviación de este ADR debe proponerse en un nuevo archivo incremental (`ADR-001_...`).
+## 5. Fronteras mínimas del dominio
 
----
+Para sostener portabilidad real, el sistema debería interactuar mediante fronteras como estas:
 
-## Puertos Mínimos del Dominio
+* **Puerto de modelo/generación**
+* **Puerto de transcripción**
+* **Puerto de publicación/preparación de salida**
+* **Puerto de persistencia/evidencia**
+* **Puerto de aprobación humana**
+* **Puerto de revisión/validación automática**
 
-Para aislar el núcleo de implementaciones concretas, el dominio interactuará a través de los siguientes puertos mínimos:
-*   **Puerto_Modelo:** adaptador de modelo evaluable; LiteLLM puede ser candidato.
-*   **Puerto_Publicacion:** Interfaz de programación y publicación (ej. LocalDraftPublisher, Metricool).
-*   **Puerto_Transcripcion:** adaptador de transcripción local o externo; Faster-Whisper puede ser candidato.
-*   **Puerto_Almacenamiento:** almacenamiento local primero; ADK Artifacts puede evaluarse después.
-*   **Puerto_Revision:** Interfaz para validación automática del post.
-*   **Puerto_Aprobacion:** Interfaz del gate de aprobación humana.
+No implica que todos estén implementados hoy.
+Implica que la arquitectura debe dejar espacio para ellos.
+
+## 6. Qué no decide este ADR
+
+Este ADR no fija todavía:
+
+* el proveedor real de IA;
+* el motor real de transcripción;
+* el primer adaptador real de publicación en producción;
+* la UI final;
+* el segundo canal operativo;
+* el modelo de multiusuario.
+
+Esas decisiones pertenecen a ADRs posteriores o a fases donde ya exista necesidad real.
+
+## 7. Consecuencia práctica
+
+Después de este ADR, el orden correcto de evolución sigue siendo:
+
+```text
+contrato de entrada
+-> contrato de salida
+-> decisiones técnicas alineadas
+-> cambios de código
+```
+
+Y la prioridad de producto sigue siendo:
+
+```text
+texto útil
+-> aprobación usable
+-> salida local lista
+-> ampliación de entradas
+-> preparación/publicación
+```

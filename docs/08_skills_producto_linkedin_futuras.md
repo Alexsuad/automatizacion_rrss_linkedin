@@ -1,5 +1,10 @@
 # 08 — Skills de Producto LinkedIn Futuras
 
+> [!WARNING]
+> Este documento queda como **referencia histórica y derivada** de una etapa donde LinkedIn se trataba como eje casi exclusivo del producto.
+> 
+> Puede seguir aportando ideas puntuales, pero no gobierna el rumbo principal del sistema portable y agnóstico definido en la documentación núcleo vigente.
+
 ## 1. Propósito
 Este documento define y registra el catálogo de **skills de producto futuras** planificadas para el publicador de LinkedIn V1. 
 
@@ -110,4 +115,3 @@ Quedan fuera del alcance inicial de la V1 las siguientes automatizaciones:
 5.  **Desacoplamiento:** Ninguna skill debe invocar o acoplarse directamente a librerías de proveedores externos (Gemini SDK, OpenAI SDK, ADK orquestador, LiteLLM, Faster-Whisper, Metricool API) en el dominio.
 6.  **Reutilización:** Si una necesidad del flujo puede cubrirse con una skill de gobernanza global ya provista en `.agents/skills/`, no se permite duplicar funcionalidad localmente.
 7.  **Variantes:** El alcance en V1 de variantes de redacción se limita a pruebas selectivas del hook o el CTA. No se deben generar paquetes múltiples de posts completos alternativos.
-

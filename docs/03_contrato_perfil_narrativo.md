@@ -1,8 +1,11 @@
 # 03 — Contrato de perfil narrativo
 
+> [!NOTE]
+> Este documento sigue vigente como contrato derivado, pero debe leerse bajo la visión portable y agnóstica definida en la documentación núcleo.
+
 ## 1. Propósito del documento
 
-Este documento define la estructura y el contrato genérico del **perfil narrativo**, que sirve para parametrizar el tono, estilo, reglas y restricciones de escritura del autor para los posts de LinkedIn generados, asegurando que el contenido mantenga la identidad única del creador.
+Este documento define la estructura y el contrato genérico del **perfil narrativo**, que sirve para parametrizar el tono, estilo, reglas y restricciones de escritura del autor para piezas del Portable Content Publisher. En la fase actual se usa primero para LinkedIn, pero no debe leerse como una identidad exclusiva del producto.
 
 > [!IMPORTANT]
 > **Contrato y no Perfil Concreto:** Este documento no representa el perfil de un cliente real concreto ni sus valores por defecto, sino las reglas estructurales (el contrato de datos) que cualquier perfil narrativo de cliente debe implementar.
@@ -141,5 +144,3 @@ estado_perfil_narrativo: COMPLETO | INCOMPLETO | REQUIERE_REVISION
 > [!NOTE]
 > Los perfiles de ejemplo nunca deben considerarse completos.
 > Un perfil narrativo solo puede marcarse como `COMPLETO` cuando ha sido validado con información real del cliente.
-
-

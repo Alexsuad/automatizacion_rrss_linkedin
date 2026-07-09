@@ -1,5 +1,15 @@
 # Mapa técnico de contexto y pipeline offline
 
+> [!IMPORTANT]
+> Este documento es una **fotografía técnica del estado actual del código** alrededor del pipeline offline con contexto.
+> 
+> **No define por sí mismo la visión vigente del producto.**
+> La visión y el alcance rectores están en:
+> * `docs/00_brief_arquitectura_pre_codigo.md`
+> * `docs/01_alcance_si_no.md`
+> * `docs/05_fases_implementacion.md`
+> * `docs/09_plan_implementacion_post_planeacion.md`
+
 ## 1. Propósito
 
 Este documento tiene como propósito consolidar y detallar el mapa técnico de la arquitectura de contexto, anticontaminación de datos y ejecución del pipeline offline (Fases J a Q). Su objetivo principal es servir de referencia para los agentes y desarrolladores que operen sobre el sistema, aclarando los límites de diseño, las restricciones de seguridad locales y qué funcionalidades quedan fuera del alcance en la versión actual.

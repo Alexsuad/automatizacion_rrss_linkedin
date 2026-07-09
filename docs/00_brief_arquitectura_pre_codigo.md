@@ -2,60 +2,114 @@
 
 ## 1. Qué problema resuelve
 
-El ciclo tradicional de creación de contenido profesional tiene alta fricción operativa por la fragmentación de herramientas y la pérdida de identidad narrativa cuando se delegan tareas a inteligencias artificiales genéricas.
+La creación de contenido profesional suele romperse por cuatro fricciones:
 
-El sistema busca resolver:
+* la materia prima entra por canales distintos y no existe una normalización útil;
+* el contenido pierde voz y coherencia al pasar por herramientas genéricas;
+* cada canal se trabaja como un proceso manual aislado;
+* no existe un bucle claro entre entrada, adaptación, revisión, salida y aprendizaje posterior.
 
-- **Fricción por cambio de contexto:** salto manual entre la grabación de ideas en audio, la transcripción, redacción, revisión de tono, optimización y calendarización.
-- **Contenido genérico:** outputs inflados, redundantes o alejados del tono real del autor.
-- **Agente monolítico:** una sola IA intentando conceptualizar, redactar, auditar y preparar publicación al mismo tiempo.
-- **Falta de control por etapas:** ausencia de entradas, salidas, criterios de calidad y trazabilidad por fase.
+El sistema que se quiere construir no es solo un publicador de LinkedIn ni solo una automatización por voz.
+
+Es un sistema portable y agnóstico que permita transformar fuentes de contenido en piezas utilizables, revisables y escalables sin depender de un entorno específico de agentes.
 
 ## 2. Para quién sirve
 
-El sistema está diseñado para profesionales B2B, consultores, fundadores, perfiles técnicos, creadores expertos y equipos pequeños que necesitan convertir ideas habladas en publicaciones de LinkedIn con voz propia, control editorial y aprobación humana antes de publicar.
+El sistema está pensado para:
 
-## 3. Producto esperado (V1)
+* profesionales B2B;
+* consultores;
+* fundadores;
+* creadores expertos;
+* equipos pequeños que producen contenido desde distintas fuentes y necesitan velocidad sin perder control editorial.
 
-La V1 es un **Publicador automático desde audio para LinkedIn**.
+## 3. Producto esperado
 
-El sistema procesa una nota de voz, genera un post formateado para LinkedIn, lo valida estructuralmente, solicita aprobación humana y, una vez aprobado, lo programa automáticamente para su publicación.
+El producto esperado es un **sistema portable de transformación y publicación de contenido**.
 
-### V1 SÍ incluye:
-- **Entrada por audio:** Captura de notas de voz como materia prima principal.
-- **Transcripción:** Conversión automática de audio a texto (Faster-Whisper local o API externa).
-- **Generación de post LinkedIn:** Creación de contenido con formato idóneo para la plataforma.
-- **Revisión automática:** Evaluación de calidad, tono, consistencia y restricciones (Pydantic/LLM).
-- **Aprobación humana:** Un gate interactivo o de confirmación humana local antes de cualquier publicación real.
-- **Programación automática:** Publicación/calendarización automatizada de la pieza aprobada.
-- **Evidencia local:** Registro persistente en local (`trace/` y `output/`) con el resultado del flujo y de la publicación.
+Su trabajo es:
 
-### V1 NO incluye (V2):
-- Otras redes sociales: Instagram, X/Twitter, Facebook, Threads.
-- Formatos enriquecidos: Carruseles, imágenes o video.
-- Analítica avanzada o dashboards de rendimiento.
-- Interfaz de usuario (UI) completa (se gestiona localmente/CLI).
-- Sistema multiusuario.
+```text
+fuente de contenido
+-> normalización
+-> extracción de intención e idea
+-> adaptación editorial por canal
+-> revisión
+-> aprobación humana
+-> borrador o preparación de publicación
+-> evidencia útil
+-> retroalimentación
+```
+
+### 3.1 Identidad del sistema
+
+La identidad del sistema no viene dada por:
+
+* un único canal;
+* un único tipo de entrada;
+* un único proveedor;
+* un único framework agéntico.
+
+La identidad del sistema viene dada por su capacidad de:
+
+* aceptar distintas fuentes;
+* preservar voz y reglas;
+* adaptar salida por canal;
+* mantener control humano;
+* preparar una operación reutilizable y escalable.
+
+### 3.2 Primer corte operativo
+
+El primer corte útil del sistema será:
+
+* entrada manual en texto;
+* generación de post para LinkedIn;
+* validación editorial y de seguridad;
+* aprobación humana usable;
+* salida local en formato borrador listo.
+
+Audio, transcripción, publicación real, visuales y otros canales llegarán después, sobre un flujo ya útil.
 
 ## 4. Principios base
 
-- **Portabilidad y modularidad:** El núcleo del sistema debe ser agnóstico del publicador externo y del LLM.
-- **No publicar sin aprobación humana:** La programación requiere confirmación explícita para evitar errores operativos o de tono.
-- **Puertos y adaptadores:** Las integraciones externas (como Metricool o servicios de LLM) son adaptadores intercambiables.
-- **Seguridad y Privacidad (PII):** Los audios y transcripciones pueden contener datos de carácter personal (PII). Antes de enviar texto a modelos externos o publicadores se debe sanitizar o aplicar un gate mínimo de privacidad. No se deben registrar secretos, tokens o PII en logs ni evidencias.
-- **El repositorio es la fuente de verdad:** Ningún chat, IDE, Metricool o ADK define el comportamiento del sistema. Todo cambio se rige por lo escrito en el repositorio.
+* **Portabilidad:** el sistema debe poder operar con software normal, archivos, scripts, adaptadores y servicios propios, sin depender de un único entorno de agentes.
+* **Agnosticismo de entrada:** texto, audio, transcripciones, documentos u otras fuentes son variantes de entrada, no productos distintos.
+* **Agnosticismo de canal:** LinkedIn puede ser el primer canal operativo, pero la arquitectura no debe impedir otros canales posteriores.
+* **Aprobación humana obligatoria:** no se debe publicar ni programar nada real sin confirmación humana explícita.
+* **Local-first para validar:** el primer flujo debe probarse con salida local segura antes de cualquier integración real externa.
+* **Separación entre visión y fotografía técnica:** la visión del producto y el estado actual del código no son lo mismo.
 
-## 5. Decisiones de diseño clave para V1
+## 5. Módulos conceptuales del sistema
 
-- **Metricool como Adaptador:** Es el primer adaptador real candidato para la programación automática, pero es totalmente reemplazable y no pertenece al núcleo del sistema.
-- **LocalDraftPublisher:** previsto como modo local planificado y definido como primera validación local de seguridad. Es la pieza central para pruebas sin conexión (offline) y para validar el flujo completo sin tocar proveedores externos ni generar costes o riesgos operativos.
-- **Google ADK:** Utilizado como motor de orquestación inicial para coordinar los flujos agénticos, pero no es una dependencia eterna ni obligatoria a largo plazo.
+El sistema debería organizarse alrededor de estos módulos:
 
-## 6. Criterio para pasar a implementación
+1. **Ingesta de fuentes:** recibe texto, audio u otras materias primas.
+2. **Normalización:** convierte cada fuente en una base operable común.
+3. **Perfil editorial:** define voz, restricciones, tono y preferencias.
+4. **Transformación editorial:** genera piezas candidatas por canal.
+5. **Revisión y validación:** comprueba calidad, seguridad, trazabilidad y publicabilidad.
+6. **Aprobación humana:** actúa como gate de operación real.
+7. **Salida y adaptadores:** generan borrador local, payload de publicación o publicación controlada.
+8. **Aprendizaje y feedback:** permiten incorporar patrones útiles posteriores sin contaminar el núcleo.
 
-No se debe escribir código hasta tener definidos:
-- Contrato de entrada y contrato de salida (V1).
-- Contrato de perfil narrativo mínimo.
-- Contrato de calidad del post LinkedIn V1.
-- Estructura mínima de evidencias locales en `output/` y `trace/`.
-- Reglas de gobernanza mínimas en `AGENTS.md`.
+## 6. Qué no debe confundirse con el producto
+
+No son el producto:
+
+* el framework agéntico usado para prototipar;
+* los documentos de control;
+* los gates por sí mismos;
+* el pipeline offline actual como fin en sí mismo;
+* el canal LinkedIn tratado como única identidad permanente.
+
+## 7. Criterio para pasar a implementación
+
+No se debe seguir escribiendo código guiado por documentación vieja o contradictoria.
+
+Antes de avanzar, deben quedar claros:
+
+* la visión vigente del producto;
+* el alcance del MVP útil;
+* el orden de implementación por valor;
+* las restricciones de seguridad que sí siguen activas;
+* qué parte del repositorio actual se reutiliza y cuál queda como estado técnico anterior.

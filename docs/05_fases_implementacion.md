@@ -1,55 +1,116 @@
 # 05 — Fases de implementación
 
-Este documento detalla las etapas de desarrollo y el plan de entregas del proyecto de automatización, estructurado en fases incrementales para asegurar la calidad técnica y evitar la sobrediseño inicial.
+Este documento define el roadmap de implementación por valor del producto actual.
 
----
+La regla principal es:
 
-## Fase 1 (V1) — Publicador automático desde audio para LinkedIn
+```text
+primero flujo útil
+después ampliación de fuentes
+después preparación/publicación
+después visuales y expansión
+```
 
-**Objetivo:** Desarrollar el pipeline mínimo viable para programar publicaciones en LinkedIn a partir de grabaciones de voz, priorizando la privacidad y la portabilidad de los adaptadores.
+## Fase 1 — Flujo útil textual
 
-> [!IMPORTANT]
-> **Regla de Prioridad Local:** La primera implementación controlada debe validar el flujo local end-to-end con `LocalDraftPublisher`, `dry_run`, aprobación humana y evidencia local antes de cualquier integración real externa.
+**Objetivo:** Conseguir que una persona entregue una idea en texto y reciba un borrador de LinkedIn realmente usable.
 
-### Flujo Operativo:
-`audio → transcripción local → post LinkedIn → revisión automática (LLM/Pydantic) + sanitización PII → aprobación humana (Gate) → preparación local o programación futura mediante adaptador → evidencia local`
+### Flujo objetivo
 
-### Subfases de la V1 (Orden de Implementación):
+```text
+texto manual
+-> normalización mínima
+-> extracción de idea e intención
+-> generación de pieza
+-> validación
+-> aprobación humana
+-> LocalDraft listo
+```
 
-*   **Fase 1A — LocalDraftPublisher:**
-    *   Implementación de la ingesta de audio, transcripción mediante adaptador local candidato, redacción mediante adaptador de modelo candidato y auditoría local de PII.
-    *   Aplicación del contrato de calidad del post LinkedIn antes de la aprobación humana para validación y diagnóstico editorial de la salida.
-    *   Implementación del `LocalDraftPublisher`, que actúa como mock/modo local de simulación y genera archivos JSON de evidencia del kit en el directorio local de salida de forma 100% offline.
-    *   Este adaptador es la pieza base para las pruebas y desarrollo desconectado.
-*   **Fase 1B — Adaptador Externo Dry-Run:**
-    *   Desarrollo del adaptador de programación externa candidato (como Metricool) configurado en modo `dry_run` para asegurar que el contrato y las credenciales se procesan correctamente sin realizar publicaciones reales.
-*   **Fase 1C — Publicación Real:**
-    *   Activación del canal real de publicación y programación externa futura mediante adaptador reemplazable (como Metricool) solo después de validar el flujo local y contar con la aprobación humana explícita para cada post individual.
+### Debe incluir
 
-### Entregables Clave de la V1:
-1.  **Módulo de Entrada e Ingesta:** Ingesta de audios locales y configuración de perfil narrativo del autor.
-2.  **Módulo de Transcripción:** Adaptador local de transcripción (donde Faster-Whisper local es un candidato evaluable).
-3.  **Filtro de Privacidad:** Sanitización previa a la salida de datos para evitar fugas de PII o credenciales hacia APIs de LLM externas.
-4.  **Módulo de Redacción y Revisión:** Generación de post (donde Google ADK es candidato) y validación estructurada.
-5.  **Gate de Aprobación Humana:** CLI o interactivo local sencillo para aprobar, editar o rechazar el post de LinkedIn antes de enviarlo.
-6.  **Harness de Trazabilidad:** Almacenamiento local en disco de la traza de ejecución de cada kit en `trace/` (excluyendo PII).
+* reutilización de contratos y validadores actuales;
+* uso de `LocalDraftPublisher` o salida equivalente;
+* control de PII, rutas, secretos y publicabilidad;
+* aprobación humana operativa.
 
----
+### No debe incluir todavía
 
-## Fase 1.5 (V1.5) — Robustez y Pruebas
-**Objetivo:** Extender la cobertura de pruebas, validación automática de prompts y optimizar el rendimiento de Faster-Whisper local.
+* audio real;
+* publicación real;
+* visuales;
+* omnicanal real;
+* UI completa.
 
-*   Integración de suite completa de pruebas unitarias usando `LocalDraftPublisher`.
-*   Monitoreo de costes y tokens consumidos.
-*   Sanitización avanzada de expresiones regulares para proteger datos personales.
+## Fase 2 — Aprobación humana usable
 
----
+**Objetivo:** Convertir la aprobación humana en una operación real y no solo en un estado de datos.
 
-## Fase 2 (V2) — Expansión Omnicanal y Formatos Visuales
-**Objetivo:** Ampliar el sistema a otros canales y tipos de formato una vez consolidado el núcleo funcional estable de LinkedIn.
+Puede resolverse inicialmente con:
 
-*   **Nuevas Redes Sociales:** Integración de X/Twitter (hilos), Instagram, Facebook y Threads.
-*   **Formatos Enriquecidos:** Generación automática de carruseles PDF y de imágenes tipo quote usando herramientas locales o APIs de diseño.
-*   **Analítica de Rendimiento:** Integración de analíticas para medir la repercusión de los posts publicados.
-*   **Interfaz de Usuario (UI):** Desarrollo de un panel web para la aprobación humana simplificada.
-*   **Multiusuario:** Soporte para múltiples perfiles y marcas desde una sola instancia.
+* CLI simple;
+* interfaz de agente/chat;
+* flujo local interactivo.
+
+**Resultado esperado:** un revisor puede aprobar, rechazar o pedir ajustes sin romper el flujo.
+
+## Fase 3 — Ampliación de entradas
+
+**Objetivo:** Añadir nuevas fuentes sobre el flujo útil ya validado.
+
+Orden recomendado:
+
+1. audio con transcripción;
+2. transcripciones de video;
+3. documentos o borradores previos;
+4. otras materias primas normalizables.
+
+**Regla:** ninguna nueva fuente debe entrar si el flujo textual base todavía no aporta valor claro.
+
+## Fase 4 — Preparación de publicación
+
+**Objetivo:** Llegar a un `dry_run` realista de salida externa sin perder el control local.
+
+Debe incluir:
+
+* payload de salida claro;
+* adaptador desacoplado;
+* evidencia útil;
+* credenciales fuera del repositorio;
+* bloqueo automático ante FAIL editorial o falta de aprobación.
+
+**Resultado esperado:** el sistema puede preparar publicación sin ejecutar todavía una publicación real descontrolada.
+
+## Fase 5 — Publicación real controlada
+
+**Objetivo:** Permitir programación o publicación real solo cuando el flujo local, la revisión y el `dry_run` ya estén consolidados.
+
+Condiciones mínimas:
+
+* aprobación humana explícita;
+* adaptador desacoplado;
+* validaciones activas;
+* trazabilidad suficiente;
+* política de secretos clara.
+
+## Fase 6 — Visuales, feedback y expansión
+
+**Objetivo:** Extender el sistema una vez el núcleo textual ya sirve de verdad.
+
+Puede incluir:
+
+* carruseles o piezas visuales;
+* analítica básica;
+* aprendizaje sobre formatos ganadores;
+* nuevos canales;
+* mejora de interfaz.
+
+## Regla transversal
+
+Toda fase debe responder a esta pregunta:
+
+```text
+¿esto acerca el sistema a una operación útil real o solo añade estructura?
+```
+
+Si la respuesta es “solo añade estructura”, no tiene prioridad.

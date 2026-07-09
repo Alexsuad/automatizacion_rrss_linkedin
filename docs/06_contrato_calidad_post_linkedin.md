@@ -1,5 +1,9 @@
 # 06 — Contrato de Calidad del Post LinkedIn V1
 
+> [!NOTE]
+> Este documento sigue siendo útil como contrato de calidad para el primer canal operativo.
+> No debe interpretarse como contrato universal de todos los canales futuros del sistema portable.
+
 ## 1. Objetivo
 Este contrato define los criterios operativos mínimos para aceptar, corregir o rechazar un post generado para LinkedIn en V1. Su función es evitar contenido genérico, artificial, sin trazabilidad o riesgoso.
 
@@ -42,7 +46,7 @@ nivel_de_promocion:    # nulo | bajo | medio | alto
 
 ## 5. Bloqueos Levantables y No Levantables (FAIL Crítico)
 *   **WARN editorial (Levantables):** Criterios de estilo mejorables (ej: hook débil, CTA genérico, pilar poco claro). Se pueden subsanar mediante aprobación humana reforzada.
-*   **FAIL crítico (No levantable por aprobación simple):** Bloqueos graves que impiden la publicación automática. Si existe un FAIL crítico abierto, el post debe ser modificado o regenerado obligatoriamente; la aprobación humana no puede levantar estos estados por sí sola.
+*   **FAIL crítico (No levantable por aprobación simple):** Bloqueos graves que impiden que la pieza avance a una salida operativa o preparación de publicación. Si existe un FAIL crítico abierto, el post debe ser modificado o regenerado obligatoriamente; la aprobación humana no puede levantar estos estados por sí sola.
 
 Son considerados **FAIL crítico no levantable**:
 *   PII expuesta (datos personales sensibles).

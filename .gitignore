@@ -30,6 +30,9 @@ logs/
 *.log
 trace/
 
+# Evidencia histórica no normativa de control
+docs/Control/Chat Deep Progrlama Linkedin2.md
+
 # Salidas de ejecución y evidencias locales (kits)
 output/
 outputs/

@@ -6,6 +6,7 @@ def _prompt_ejemplo():
         [
             "Texto base original: Aprendi que un flujo simple mejora la utilidad del sistema.",
             "Idea central: Empezar simple mejora la utilidad del sistema",
+            "Idea explicita del usuario: La utilidad real empieza con un flujo simple y seguro",
             "Resumen de intencion: compartir_aprendizaje",
             "Perfil narrativo de referencia: perfil_fundador",
             "Audiencia objetivo: equipos pequenos B2B",
@@ -24,7 +25,8 @@ def test_controlled_adapter_genera_texto_util_y_determinista():
 
     assert res1 == res2
     assert "[BORRADOR SIMULADO DE POST]" not in res1
-    assert "Empezar simple mejora la utilidad del sistema" in res1
+    assert "La utilidad real empieza con un flujo simple y seguro" in res1
+    assert "La intencion editorial resumida es compartir_aprendizaje" in res1
     assert "Que opinas?" in res1
 
 

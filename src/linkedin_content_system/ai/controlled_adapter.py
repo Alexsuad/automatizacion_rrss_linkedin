@@ -14,16 +14,23 @@ def _extraer_linea(prompt: str, prefijo: str) -> str:
     return ""
 
 
+def _limpiar_fragmento(texto: str) -> str:
+    return texto.strip().rstrip(" .!?¡¿")
+
+
 def _construir_borrador_util(prompt: str) -> str:
     texto_base = _extraer_linea(prompt, "Texto base original:")
     idea_central = _extraer_linea(prompt, "Idea central:")
+    idea_explicita = _extraer_linea(prompt, "Idea explicita del usuario:")
     intencion = _extraer_linea(prompt, "Resumen de intencion:")
     audiencia = _extraer_linea(prompt, "Audiencia objetivo:")
     objetivo = _extraer_linea(prompt, "Objetivo del post:")
     cta = _extraer_linea(prompt, "CTA deseado:") or "Que opinas?"
 
-    hook = idea_central or texto_base or "Hay una idea simple que conviene aterrizar"
-    cuerpo = texto_base or idea_central or "El flujo textual debe dar una base util y revisable."
+    idea_prioritaria = idea_explicita or idea_central or texto_base
+    hook = _limpiar_fragmento(idea_prioritaria) or "Hay una idea simple que conviene aterrizar"
+    cuerpo_origen = texto_base or idea_prioritaria
+    cuerpo = _limpiar_fragmento(cuerpo_origen) or "El flujo textual debe dar una base util y revisable"
     cierre = cta if cta.endswith("?") else f"{cta}?"
 
     lineas = [
@@ -31,6 +38,8 @@ def _construir_borrador_util(prompt: str) -> str:
         f"Cuando se aterriza bien, el flujo gana foco y utilidad: {cuerpo}.",
     ]
 
+    if idea_explicita:
+        lineas.append(f"La idea explicita del usuario es {_limpiar_fragmento(idea_explicita)}.")
     if intencion:
         lineas.append(f"La intencion editorial resumida es {intencion.lower()}.")
     if audiencia:

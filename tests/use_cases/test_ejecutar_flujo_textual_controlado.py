@@ -19,12 +19,12 @@ def entrada_valida():
     return EntradaContenido(
         id_entrada="in_texto_001",
         tipo_entrada=TipoEntrada.TEXTO_MANUAL,
-        texto_base="Aprendi que una automatizacion util empieza con un flujo simple y revisable.",
+        texto_base="Hoy vi que muchos equipos quieren usar IA para contenido, pero primero necesitan un flujo simple, revisable y seguro antes de automatizar mas.",
         intencion_editorial=IntencionEditorial(
             estado_intencion_editorial=EstadoIntencionEditorial.COMPLETA,
-            audiencia_objetivo="equipos pequenos B2B",
-            idea_central="Empezar simple mejora la utilidad del sistema",
-            cta_intencionado="Que opinas",
+            audiencia_objetivo="fundadores y equipos pequenos B2B",
+            idea_central="La utilidad real empieza con un flujo simple y seguro",
+            cta_intencionado="¿Te pasa lo mismo?",
         ),
         perfil_narrativo=PerfilNarrativoReferencia(id_perfil="perfil_fundador"),
         canales_destino=["linkedin", "x"],
@@ -62,4 +62,7 @@ def test_ejecutar_flujo_textual_con_adapter_controlado_genera_localdraft_publica
     assert post_file.exists()
     assert salida_file.exists()
     assert manifest.id_entrada == "in_texto_001"
-    assert "Que opinas?" in post_file.read_text(encoding="utf-8")
+    contenido = post_file.read_text(encoding="utf-8")
+    assert "[BORRADOR SIMULADO DE POST]" not in contenido
+    assert "La utilidad real empieza con un flujo simple y seguro" in contenido
+    assert "¿Te pasa lo mismo?" in contenido

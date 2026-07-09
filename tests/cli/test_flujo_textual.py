@@ -32,6 +32,25 @@ def _entrada_json():
     return entrada.model_dump(mode="json")
 
 
+def _entrada_json_realista():
+    entrada = EntradaContenido(
+        id_entrada="in_cli_005",
+        tipo_entrada=TipoEntrada.TEXTO_MANUAL,
+        texto_base="Hoy vi que muchos equipos quieren usar IA para contenido, pero primero necesitan un flujo simple, revisable y seguro antes de automatizar mas.",
+        intencion_editorial=IntencionEditorial(
+            estado_intencion_editorial=EstadoIntencionEditorial.COMPLETA,
+            audiencia_objetivo="fundadores y equipos pequenos B2B",
+            idea_central="La utilidad real empieza con un flujo simple y seguro",
+            cta_intencionado="¿Te pasa lo mismo?",
+        ),
+        perfil_narrativo=PerfilNarrativoReferencia(id_perfil="perfil_cli_realista"),
+        canales_destino=["linkedin"],
+        estado_privacidad=EstadoPrivacidad(sanitizado=True),
+        restricciones={},
+    )
+    return entrada.model_dump(mode="json")
+
+
 def _cli_env():
     env = os.environ.copy()
     env["PYTHONPATH"] = os.path.abspath("src")
@@ -133,3 +152,36 @@ def test_cli_json_invalido_falla(tmp_path):
 
     assert result.returncode != 0
     assert "error" in result.stderr.lower()
+
+
+def test_cli_aprobado_con_entrada_realista_genera_localdraft_util(tmp_path):
+    input_path = tmp_path / "entrada_realista.json"
+    input_path.write_text(json.dumps(_entrada_json_realista(), ensure_ascii=False), encoding="utf-8")
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "linkedin_content_system.cli.flujo_textual",
+            "--input-json",
+            str(input_path),
+            "--output-dir",
+            str(tmp_path),
+            "--estado-aprobacion",
+            "aprobado",
+            "--revisor",
+            "QA Local",
+            "--fecha-aprobacion",
+            "2026-07-10T10:00:00Z",
+        ],
+        capture_output=True,
+        text=True,
+        env=_cli_env(),
+    )
+
+    assert result.returncode == 0
+    assert (tmp_path / "localdraft_in_cli_005").exists()
+    contenido = (tmp_path / "localdraft_in_cli_005" / "post.md").read_text(encoding="utf-8")
+    assert "[BORRADOR SIMULADO DE POST]" not in contenido
+    assert "La utilidad real empieza con un flujo simple y seguro" in contenido
+    assert "¿Te pasa lo mismo?" in contenido

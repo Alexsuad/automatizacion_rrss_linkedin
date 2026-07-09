@@ -13,7 +13,7 @@ from linkedin_content_system.use_cases import generar_borrador_local_desde_simul
 def entrada_valida():
     return EntradaContenido(
         id_entrada="in_200",
-        tipo_entrada=TipoEntrada.AUDIO,
+        tipo_entrada=TipoEntrada.TEXTO_MANUAL,
         texto_base="Texto base válido de prueba para caso de uso.",
         intencion_editorial=IntencionEditorial(
             estado_intencion_editorial=EstadoIntencionEditorial.COMPLETA,
@@ -142,7 +142,7 @@ def test_caso_uso_bloquea_si_post_inseguro(tmp_path, entrada_valida, diagnostico
 def test_caso_uso_bloquea_path_traversal(tmp_path, diagnostico_pass, aprobacion_aprobada):
     entrada_bad_id = EntradaContenido(
         id_entrada="in_200/../traversal",
-        tipo_entrada=TipoEntrada.AUDIO,
+        tipo_entrada=TipoEntrada.TEXTO_MANUAL,
         texto_base="Texto base",
         intencion_editorial=IntencionEditorial(
             estado_intencion_editorial=EstadoIntencionEditorial.COMPLETA,
@@ -165,7 +165,7 @@ def test_caso_uso_bloquea_path_traversal(tmp_path, diagnostico_pass, aprobacion_
 def test_caso_uso_no_escribe_fuera_de_base_dir(tmp_path, diagnostico_pass, aprobacion_aprobada):
     entrada_bad_id = EntradaContenido(
         id_entrada="..",
-        tipo_entrada=TipoEntrada.AUDIO,
+        tipo_entrada=TipoEntrada.TEXTO_MANUAL,
         texto_base="Texto base",
         intencion_editorial=IntencionEditorial(
             estado_intencion_editorial=EstadoIntencionEditorial.COMPLETA,

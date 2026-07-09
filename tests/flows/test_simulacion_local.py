@@ -14,7 +14,7 @@ from linkedin_content_system.flows import ensamblar_flujo_local_simulado
 def entrada_valida():
     return EntradaContenido(
         id_entrada="in_100",
-        tipo_entrada=TipoEntrada.AUDIO,
+        tipo_entrada=TipoEntrada.TEXTO_MANUAL,
         texto_base="Este es el texto base válido de prueba.",
         intencion_editorial=IntencionEditorial(
             estado_intencion_editorial=EstadoIntencionEditorial.COMPLETA,

@@ -3,9 +3,11 @@ from typing import Optional, List
 from pydantic import BaseModel, Field, model_validator
 
 class TipoEntrada(str, Enum):
+    TEXTO_MANUAL = "texto_manual"
     AUDIO = "audio"
-    TEXTO_BRUTO = "texto_bruto"
+    TRANSCRIPCION = "transcripcion"
     BORRADOR_EXISTENTE = "borrador_existente"
+    DOCUMENTO_BASE = "documento_base"
 
 class EstadoIntencionEditorial(str, Enum):
     COMPLETA = "completa"
@@ -34,6 +36,8 @@ class PerfilNarrativoReferencia(BaseModel):
 
 class EstadoPrivacidad(BaseModel):
     sanitizado: bool
+    pii_detectada: bool = False
+    advertencias: List[str] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def validar_sanitizado(self):
@@ -44,10 +48,12 @@ class EstadoPrivacidad(BaseModel):
 class EntradaContenido(BaseModel):
     id_entrada: str
     tipo_entrada: TipoEntrada
+    fecha_creacion: Optional[str] = None
     texto_base: str
     intencion_editorial: IntencionEditorial
     perfil_narrativo: PerfilNarrativoReferencia
     canales_destino: List[str] = Field(default_factory=lambda: ["linkedin"])
+    metadatos_origen: dict = Field(default_factory=dict)
     estado_privacidad: EstadoPrivacidad
     restricciones: dict
 
@@ -56,8 +62,18 @@ class EntradaContenido(BaseModel):
         if not self.texto_base or not self.texto_base.strip():
             raise ValueError("texto_base siempre debe tener contenido útil (no puede estar vacío ni contener solo espacios).")
 
-        if self.canales_destino != ["linkedin"]:
-            raise ValueError("canales_destino debe ser exactamente ['linkedin'].")
+        if not self.canales_destino:
+            raise ValueError("canales_destino no puede estar vacío.")
+
+        canales_normalizados: List[str] = []
+        for canal in self.canales_destino:
+            if not isinstance(canal, str) or not canal.strip():
+                raise ValueError("canales_destino solo puede contener strings no vacíos.")
+            canal_normalizado = canal.strip().lower()
+            if canal_normalizado in canales_normalizados:
+                raise ValueError("canales_destino no puede contener canales duplicados.")
+            canales_normalizados.append(canal_normalizado)
+        self.canales_destino = canales_normalizados
 
         ie = self.intencion_editorial
         if ie.estado_intencion_editorial in (EstadoIntencionEditorial.PARCIAL, EstadoIntencionEditorial.TENTATIVA):

@@ -1,7 +1,7 @@
 [project]
 name = "linkedin-content-system"
 version = "0.1.0"
-description = "LinkedIn automated publishing system from voice drafts"
+description = "Portable Content Publisher for local draft generation and channel-specific publishing"
 authors = [
     { name = "Alex Suarez" }
 ]
@@ -21,4 +21,3 @@ build-backend = "uv_build"
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
-

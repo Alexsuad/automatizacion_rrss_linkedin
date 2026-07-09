@@ -24,7 +24,7 @@ from linkedin_content_system.validators.trazabilidad import (
 def entrada_trazable():
     return EntradaContenido(
         id_entrada="trz_001",
-        tipo_entrada=TipoEntrada.TEXTO_BRUTO,
+        tipo_entrada=TipoEntrada.TEXTO_MANUAL,
         texto_base="Contamos una mejora del 15% con datos internos ya explicados.",
         intencion_editorial=IntencionEditorial(
             estado_intencion_editorial=EstadoIntencionEditorial.COMPLETA,

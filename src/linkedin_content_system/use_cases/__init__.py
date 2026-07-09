@@ -1,5 +1,6 @@
 from .generar_borrador_local import generar_borrador_local_desde_simulacion
 from .generar_post_mock import generar_post_mock
+from .ejecutar_flujo_textual import ejecutar_flujo_textual
 from .extraer_idea_central import extraer_idea_central
 from .extraer_intencion_editorial import extraer_intencion_editorial
 from .diagnosticar_base_editorial import diagnosticar_base_editorial
@@ -14,6 +15,7 @@ from .construir_evidencia_contexto_usado import construir_evidencia_contexto_usa
 __all__ = [
     "generar_borrador_local_desde_simulacion",
     "generar_post_mock",
+    "ejecutar_flujo_textual",
     "extraer_idea_central",
     "extraer_intencion_editorial",
     "diagnosticar_base_editorial",
@@ -25,7 +27,6 @@ __all__ = [
     "ejecutar_pipeline_contexto_offline",
     "construir_evidencia_contexto_usado"
 ]
-
 
 
 

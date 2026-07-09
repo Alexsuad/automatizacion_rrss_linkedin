@@ -17,8 +17,8 @@ def _trazabilidad_pass():
 def test_entrada_valida_con_intencion_completa():
     entrada = EntradaContenido(
         id_entrada="in_001",
-        tipo_entrada=TipoEntrada.AUDIO,
-        texto_base="Este es el texto base de la nota de voz.",
+        tipo_entrada=TipoEntrada.TEXTO_MANUAL,
+        texto_base="Este es el texto base de la idea manual.",
         intencion_editorial=IntencionEditorial(
             estado_intencion_editorial=EstadoIntencionEditorial.COMPLETA,
             audiencia_objetivo="desarrolladores",
@@ -34,7 +34,7 @@ def test_entrada_valida_con_intencion_completa():
 def test_entrada_valida_con_intencion_parcial():
     entrada = EntradaContenido(
         id_entrada="in_002",
-        tipo_entrada=TipoEntrada.AUDIO,
+        tipo_entrada=TipoEntrada.TEXTO_MANUAL,
         texto_base="Texto base para derivar intencion.",
         intencion_editorial=IntencionEditorial(
             estado_intencion_editorial=EstadoIntencionEditorial.PARCIAL,
@@ -50,7 +50,7 @@ def test_entrada_falla_sin_intencion_ni_insumo():
     with pytest.raises(ValidationError):
         EntradaContenido(
             id_entrada="in_003",
-            tipo_entrada=TipoEntrada.AUDIO,
+            tipo_entrada=TipoEntrada.TEXTO_MANUAL,
             texto_base="",
             intencion_editorial=IntencionEditorial(
                 estado_intencion_editorial=EstadoIntencionEditorial.PARCIAL,
@@ -64,7 +64,7 @@ def test_entrada_falla_sin_intencion_ni_insumo():
     with pytest.raises(ValidationError):
         EntradaContenido(
             id_entrada="in_004",
-            tipo_entrada=TipoEntrada.AUDIO,
+            tipo_entrada=TipoEntrada.TEXTO_MANUAL,
             texto_base="",
             intencion_editorial=IntencionEditorial(
                 estado_intencion_editorial=EstadoIntencionEditorial.COMPLETA
@@ -93,7 +93,7 @@ def test_entrada_rechaza_privacidad_no_sanitizada():
     with pytest.raises(ValidationError):
         EntradaContenido(
             id_entrada="in_006",
-            tipo_entrada=TipoEntrada.AUDIO,
+            tipo_entrada=TipoEntrada.TEXTO_MANUAL,
             texto_base="Texto base",
             intencion_editorial=IntencionEditorial(
                 estado_intencion_editorial=EstadoIntencionEditorial.COMPLETA,
@@ -394,7 +394,7 @@ def test_entrada_rechaza_texto_base_vacio():
     with pytest.raises(ValidationError):
         EntradaContenido(
             id_entrada="in_007",
-            tipo_entrada=TipoEntrada.AUDIO,
+            tipo_entrada=TipoEntrada.TEXTO_MANUAL,
             texto_base="",  # vacio
             intencion_editorial=IntencionEditorial(
                 estado_intencion_editorial=EstadoIntencionEditorial.COMPLETA,
@@ -409,7 +409,7 @@ def test_entrada_rechaza_texto_base_solo_espacios():
     with pytest.raises(ValidationError):
         EntradaContenido(
             id_entrada="in_008",
-            tipo_entrada=TipoEntrada.AUDIO,
+            tipo_entrada=TipoEntrada.TEXTO_MANUAL,
             texto_base="   ",  # solo espacios
             intencion_editorial=IntencionEditorial(
                 estado_intencion_editorial=EstadoIntencionEditorial.COMPLETA,
@@ -420,34 +420,65 @@ def test_entrada_rechaza_texto_base_solo_espacios():
             restricciones={}
         )
 
-def test_entrada_rechaza_canal_no_linkedin():
+def test_entrada_acepta_canal_no_linkedin():
+    entrada = EntradaContenido(
+        id_entrada="in_009",
+        tipo_entrada=TipoEntrada.TEXTO_MANUAL,
+        texto_base="Texto base util",
+        intencion_editorial=IntencionEditorial(
+            estado_intencion_editorial=EstadoIntencionEditorial.COMPLETA,
+            idea_central="Idea"
+        ),
+        perfil_narrativo=PerfilNarrativoReferencia(id_perfil="perfil_001"),
+        canales_destino=["x"],
+        estado_privacidad=EstadoPrivacidad(sanitizado=True),
+        restricciones={}
+    )
+    assert entrada.canales_destino == ["x"]
+
+def test_entrada_acepta_multiples_canales():
+    entrada = EntradaContenido(
+        id_entrada="in_010",
+        tipo_entrada=TipoEntrada.TEXTO_MANUAL,
+        texto_base="Texto base util",
+        intencion_editorial=IntencionEditorial(
+            estado_intencion_editorial=EstadoIntencionEditorial.COMPLETA,
+            idea_central="Idea"
+        ),
+        perfil_narrativo=PerfilNarrativoReferencia(id_perfil="perfil_001"),
+        canales_destino=["linkedin", "instagram"],
+        estado_privacidad=EstadoPrivacidad(sanitizado=True),
+        restricciones={}
+    )
+    assert entrada.canales_destino == ["linkedin", "instagram"]
+
+def test_entrada_rechaza_canales_vacios_o_duplicados():
     with pytest.raises(ValidationError):
         EntradaContenido(
-            id_entrada="in_009",
-            tipo_entrada=TipoEntrada.AUDIO,
+            id_entrada="in_011",
+            tipo_entrada=TipoEntrada.TEXTO_MANUAL,
             texto_base="Texto base util",
             intencion_editorial=IntencionEditorial(
                 estado_intencion_editorial=EstadoIntencionEditorial.COMPLETA,
                 idea_central="Idea"
             ),
             perfil_narrativo=PerfilNarrativoReferencia(id_perfil="perfil_001"),
-            canales_destino=["x"],  # No es linkedin
+            canales_destino=[],
             estado_privacidad=EstadoPrivacidad(sanitizado=True),
             restricciones={}
         )
 
-def test_entrada_rechaza_multiples_canales():
     with pytest.raises(ValidationError):
         EntradaContenido(
-            id_entrada="in_010",
-            tipo_entrada=TipoEntrada.AUDIO,
+            id_entrada="in_012",
+            tipo_entrada=TipoEntrada.TEXTO_MANUAL,
             texto_base="Texto base util",
             intencion_editorial=IntencionEditorial(
                 estado_intencion_editorial=EstadoIntencionEditorial.COMPLETA,
                 idea_central="Idea"
             ),
             perfil_narrativo=PerfilNarrativoReferencia(id_perfil="perfil_001"),
-            canales_destino=["linkedin", "instagram"],  # Mas de un canal
+            canales_destino=["linkedin", "linkedin"],
             estado_privacidad=EstadoPrivacidad(sanitizado=True),
             restricciones={}
         )

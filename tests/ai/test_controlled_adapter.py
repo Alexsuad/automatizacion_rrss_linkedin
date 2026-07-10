@@ -2,6 +2,7 @@ import pytest
 
 from linkedin_content_system.ai import (
     ControlledModelAdapter,
+    LiteLLMConfigurationError,
     LiteLLMModelAdapter,
     MockModelAdapter,
     construir_model_adapter,
@@ -74,4 +75,12 @@ def test_construir_model_adapter_rechaza_modo_desconocido(monkeypatch):
     monkeypatch.setenv("LINKEDIN_CONTENT_AI_ADAPTER", "desconocido")
 
     with pytest.raises(ValueError, match="Modo de adaptador desconocido"):
+        construir_model_adapter()
+
+
+def test_construir_model_adapter_litellm_falla_si_configuracion_incompleta(monkeypatch):
+    monkeypatch.setenv("LINKEDIN_CONTENT_AI_ADAPTER", "litellm")
+    monkeypatch.delenv("LINKEDIN_CONTENT_AI_MODEL", raising=False)
+
+    with pytest.raises(LiteLLMConfigurationError, match="Falta configurar el modelo real"):
         construir_model_adapter()

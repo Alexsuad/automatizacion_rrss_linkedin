@@ -64,6 +64,33 @@ Why:
 - If credentials are absent, the plan stops at `IMPLEMENTED_PENDING_REAL_SMOKE`.
 - No smoke call may publish content or touch publishers.
 
+## Smoke real
+
+Comando:
+
+`LINKEDIN_CONTENT_AI_ADAPTER=litellm LINKEDIN_CONTENT_AI_PROVIDER=<proveedor> LINKEDIN_CONTENT_AI_MODEL=<modelo> LINKEDIN_CONTENT_AI_MAX_TOKENS=120 UV_CACHE_DIR=/tmp/uv-cache uv run python -m linkedin_content_system.cli.flujo_textual --input-json /tmp/plan006_smoke_input.json --output-dir /tmp/plan006-smoke-output --estado-aprobacion aprobado --revisor "Smoke Local" --fecha-aprobacion 2026-07-10T12:00:00Z`
+
+Fixture:
+
+```text
+Idea central: La automatización útil reduce tareas repetitivas sin reemplazar el criterio humano.
+Audiencia: profesionales y equipos pequeños.
+Objetivo: crear un borrador breve de LinkedIn con tono natural y una pregunta final concreta.
+```
+
+Criterio PASS:
+
+- respuesta no vacía;
+- LocalDraft/evidencia creada;
+- sin publicación;
+- sin secretos en salida;
+- una sola llamada;
+- dentro del timeout.
+
+Resultado:
+
+- `PENDIENTE` en este entorno por ausencia de credenciales configuradas.
+
 ## Acceptance criteria
 
 - A provider-backed adapter exists behind `ModelAdapter`.

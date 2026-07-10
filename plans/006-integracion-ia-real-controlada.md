@@ -10,6 +10,7 @@
 - **Depends on**: plans/005-prueba-valor-flujo-textual-local.md
 - **Category**: integration
 - **Planned at**: 2026-07-10
+- **Status after implementation**: IMPLEMENTED_PENDING_REAL_SMOKE
 
 ## Objective
 

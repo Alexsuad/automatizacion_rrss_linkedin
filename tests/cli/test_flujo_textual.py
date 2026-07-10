@@ -54,6 +54,7 @@ def _entrada_json_realista():
 def _cli_env():
     env = os.environ.copy()
     env["PYTHONPATH"] = os.path.abspath("src")
+    env["LINKEDIN_CONTENT_AI_ADAPTER"] = "controlled"
     return env
 
 

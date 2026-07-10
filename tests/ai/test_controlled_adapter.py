@@ -1,4 +1,11 @@
-from linkedin_content_system.ai import ControlledModelAdapter, MockModelAdapter, construir_model_adapter
+import pytest
+
+from linkedin_content_system.ai import (
+    ControlledModelAdapter,
+    LiteLLMModelAdapter,
+    MockModelAdapter,
+    construir_model_adapter,
+)
 
 
 def _prompt_ejemplo():
@@ -42,3 +49,29 @@ def test_construir_model_adapter_puede_volver_a_mock(monkeypatch):
     adapter = construir_model_adapter()
 
     assert isinstance(adapter, MockModelAdapter)
+
+
+def test_construir_model_adapter_puede_ir_a_litellm(monkeypatch):
+    monkeypatch.setenv("LINKEDIN_CONTENT_AI_ADAPTER", "litellm")
+    monkeypatch.setenv("LINKEDIN_CONTENT_AI_MODEL", "gpt-4o-mini")
+    monkeypatch.setenv("LINKEDIN_CONTENT_AI_PROVIDER", "openai")
+
+    from linkedin_content_system.ai import litellm_adapter as litellm_adapter_module
+
+    class _FakeLiteLLM:
+        def completion(self, **kwargs):
+            return {"choices": [{"message": {"content": "respuesta real simulada"}}]}
+
+    monkeypatch.setattr(litellm_adapter_module, "litellm", _FakeLiteLLM())
+
+    adapter = construir_model_adapter()
+
+    assert isinstance(adapter, LiteLLMModelAdapter)
+    assert adapter.generar_texto("Prompt base") == "respuesta real simulada"
+
+
+def test_construir_model_adapter_rechaza_modo_desconocido(monkeypatch):
+    monkeypatch.setenv("LINKEDIN_CONTENT_AI_ADAPTER", "desconocido")
+
+    with pytest.raises(ValueError, match="Modo de adaptador desconocido"):
+        construir_model_adapter()

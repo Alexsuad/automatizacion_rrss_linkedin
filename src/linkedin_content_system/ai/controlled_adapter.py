@@ -4,6 +4,7 @@ import os
 from typing import Optional
 
 from linkedin_content_system.ai.mock_adapter import MockModelAdapter
+from linkedin_content_system.ai.litellm_adapter import LiteLLMModelAdapter
 from linkedin_content_system.ai.ports import ModelAdapter
 
 
@@ -75,11 +76,18 @@ def construir_model_adapter(modo: Optional[str] = None) -> ModelAdapter:
     Selecciona el adaptador textual sin tocar proveedores reales.
 
     Valores admitidos:
-    - ``controlado``: adaptador local útil por defecto.
+    - ``controlado`` o ``controlled``: adaptador local útil por defecto.
     - ``mock``: adaptador determinista de pruebas.
+    - ``litellm``: adaptador real configurable detrás del seam.
     """
 
     modo_resuelto = (modo or os.getenv("LINKEDIN_CONTENT_AI_ADAPTER", "controlado")).strip().lower()
+    if modo_resuelto in {"controlado", "controlled"}:
+        return ControlledModelAdapter()
     if modo_resuelto == "mock":
         return MockModelAdapter()
-    return ControlledModelAdapter()
+    if modo_resuelto == "litellm":
+        return LiteLLMModelAdapter()
+    raise ValueError(
+        "Modo de adaptador desconocido. Valores admitidos: controlado, controlled, mock, litellm."
+    )

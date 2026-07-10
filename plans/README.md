@@ -13,6 +13,7 @@ honor its STOP conditions, and update your row when done.
 | 003  | Salida externa dry-run sin proveedor real | P1 | M | 002 | DONE |
 | 004  | La generacion textual util se activa mediante un adaptador controlado | P1 | M | 003 | DONE |
 | 005  | Prueba de valor del flujo textual local con entrada realista | P1 | S | 004 | DONE |
+| 006  | Integracion IA real controlada detrás de ModelAdapter | P1 | M | 005 | IN PROGRESS |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJECTED (with one-line rationale - finding fixed independently or approach abandoned)
 
@@ -23,6 +24,7 @@ Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJE
 - `003` depende de `002` porque la salida externa dry-run necesita la frontera portable ya declarada y el rumbo saneado.
 - `004` depende de `003` porque la generacion textual debe evolucionar sin romper la frontera de publicacion ya establecida ni reintroducir acoplamiento real.
 - `005` depende de `004` porque la prueba de valor necesita el adapter controlado ya estabilizado.
+- `006` depende de `005` porque la integración real solo tiene sentido después de validar que el flujo local útil ya aporta valor suficiente.
 
 ## Findings considered and rejected
 

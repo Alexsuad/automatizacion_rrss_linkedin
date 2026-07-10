@@ -8,6 +8,7 @@ from linkedin_content_system.contracts import (
     PostCandidato, AprobacionHumana, EstadoAprobacion, SalidaLocalDraft
 )
 from linkedin_content_system.use_cases import generar_borrador_local_desde_simulacion
+from linkedin_content_system.publishers import PublicationPublisherPort
 
 @pytest.fixture
 def entrada_valida():
@@ -184,3 +185,30 @@ def test_caso_uso_no_escribe_fuera_de_base_dir(tmp_path, diagnostico_pass, aprob
             aprobacion=aprobacion_aprobada,
             base_dir=str(tmp_path)
         )
+
+
+def test_caso_uso_admite_publisher_inyectado(entrada_valida, diagnostico_pass, aprobacion_aprobada):
+    class PublisherSpy(PublicationPublisherPort):
+        def __init__(self):
+            self.salida = None
+            self.id_entrada = None
+
+        def guardar(self, salida, id_entrada):
+            self.salida = salida
+            self.id_entrada = id_entrada
+            return {"id_entrada": id_entrada}
+
+    publisher = PublisherSpy()
+    post = PostCandidato(texto="Post limpio")
+
+    manifest = generar_borrador_local_desde_simulacion(
+        entrada=entrada_valida,
+        post=post,
+        diagnostico=diagnostico_pass,
+        aprobacion=aprobacion_aprobada,
+        publisher=publisher,
+    )
+
+    assert manifest == {"id_entrada": "in_200"}
+    assert publisher.id_entrada == "in_200"
+    assert publisher.salida.post.texto == "Post limpio"

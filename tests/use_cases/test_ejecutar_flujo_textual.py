@@ -15,6 +15,10 @@ from linkedin_content_system.contracts import (
     TipoEntrada,
 )
 from linkedin_content_system.use_cases import ejecutar_flujo_textual
+from linkedin_content_system.use_cases.flujo_textual_runtime import (
+    PerfilNarrativoRuntime,
+    SolicitudGeneracionTextual,
+)
 
 
 @pytest.fixture
@@ -132,9 +136,11 @@ def test_ejecutar_flujo_textual_compone_prompt_con_senales_derivadas(tmp_path, e
     class SpyAdapter(ModelAdapter):
         def __init__(self):
             self.prompt_recibido = None
+            self.system_instruction_recibida = None
 
         def generar_texto(self, prompt: str, system_instruction: str = None) -> str:
             self.prompt_recibido = prompt
+            self.system_instruction_recibida = system_instruction
             return (
                 "Empezar simple mejora la utilidad del sistema para equipos pequenos B2B.\n"
                 "Que opinas?"
@@ -150,6 +156,83 @@ def test_ejecutar_flujo_textual_compone_prompt_con_senales_derivadas(tmp_path, e
     )
 
     assert adapter.prompt_recibido is not None
+    assert adapter.system_instruction_recibida is not None
     assert entrada_valida.texto_base in adapter.prompt_recibido
     assert entrada_valida.intencion_editorial.idea_central in adapter.prompt_recibido
     assert "Intención identificada como compartir_aprendizaje" in adapter.prompt_recibido
+    assert "Tono base:" in adapter.system_instruction_recibida
+
+
+def test_ejecutar_flujo_textual_bloquea_entrada_insegura_antes_del_adapter(
+    tmp_path,
+    entrada_valida,
+    aprobacion_aprobada,
+):
+    class SpyAdapter(ModelAdapter):
+        def __init__(self):
+            self.invocado = False
+
+        def generar_texto(self, prompt: str, system_instruction: str = None) -> str:
+            self.invocado = True
+            return "No deberia generarse"
+
+    adapter = SpyAdapter()
+    entrada_insegura = entrada_valida.model_copy(
+        update={"texto_base": "Escribeme a correo@dominio.com para contarte el caso"}
+    )
+
+    with pytest.raises(ValueError, match="correo electrónico"):
+        ejecutar_flujo_textual(
+            entrada=entrada_insegura,
+            adapter=adapter,
+            aprobacion=aprobacion_aprobada,
+            base_dir=str(tmp_path),
+        )
+
+    assert adapter.invocado is False
+    assert not (tmp_path / "localdraft_in_texto_001").exists()
+
+
+def test_ejecutar_flujo_textual_admite_strategy_inyectado_para_otro_canal(
+    tmp_path,
+    entrada_valida,
+    aprobacion_aprobada,
+):
+    class CanalXStrategy:
+        canal_destino = "x"
+
+        def supports(self, entrada):
+            return "x" in entrada.canales_destino
+
+        def build_request(self, entrada, idea_central, resumen_intencion, perfil):
+            return SolicitudGeneracionTextual(
+                canal_destino="x",
+                prompt=f"Texto base original: {entrada.texto_base}\nIdea central: {idea_central}",
+                system_instruction=f"Tono base: {perfil.tono_base}",
+            )
+
+    class ResolverFalso:
+        def resolve(self, id_perfil: str) -> PerfilNarrativoRuntime:
+            return PerfilNarrativoRuntime(
+                id_perfil=id_perfil,
+                tono_base="Directo y tecnico",
+                tono_prohibido="Promocional hueco",
+            )
+
+    class SafeAdapter(ModelAdapter):
+        def generar_texto(self, prompt: str, system_instruction: str = None) -> str:
+            return "Empezar simple mejora la utilidad del sistema en otro canal.\nQue opinas?"
+
+    entrada_x = entrada_valida.model_copy(update={"canales_destino": ["x"]})
+
+    manifest = ejecutar_flujo_textual(
+        entrada=entrada_x,
+        adapter=SafeAdapter(),
+        aprobacion=aprobacion_aprobada,
+        base_dir=str(tmp_path),
+        profile_resolver=ResolverFalso(),
+        channel_strategy=CanalXStrategy(),
+    )
+
+    assert manifest.id_entrada == "in_texto_001"
+    assert (tmp_path / "localdraft_in_texto_001" / "post.md").exists()

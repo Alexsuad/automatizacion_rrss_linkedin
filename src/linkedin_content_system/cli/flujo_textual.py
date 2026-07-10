@@ -1,5 +1,6 @@
 import argparse
 import json
+import os
 import sys
 from datetime import datetime, timezone
 
@@ -11,17 +12,46 @@ from linkedin_content_system.contracts import (
     EntradaContenido,
     EstadoAprobacion,
     TipoAprobacion,
+    EstadoIntencionEditorial,
+    EstadoPrivacidad,
+    IntencionEditorial,
+    PerfilNarrativoReferencia,
+    TipoEntrada,
 )
-from linkedin_content_system.use_cases import ejecutar_flujo_textual
+from linkedin_content_system.publishers import LocalDraftPublisher
+from linkedin_content_system.use_cases.flujo_textual_runtime import (
+    FilesystemNarrativeProfileResolver,
+    LinkedInTextChannelStrategy,
+)
+from linkedin_content_system.use_cases import (
+    FilesystemEditorialSessionStore,
+    aprobar_version,
+    ejecutar_flujo_textual,
+    generar_borrador_pendiente,
+    preparar_salida_aprobada,
+    rechazar_version,
+    solicitar_ajustes,
+)
 
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Ejecuta el flujo textual local hasta LocalDraft.")
-    parser.add_argument("--input-json", required=True, help="Ruta al archivo JSON con EntradaContenido.")
+    entrada = parser.add_mutually_exclusive_group()
+    entrada.add_argument("--input-json", help="Ruta al archivo JSON con EntradaContenido.")
+    entrada.add_argument("--texto", help="Texto manual para generar sin preparar JSON.")
     parser.add_argument("--output-dir", required=True, help="Directorio base donde se guardara el LocalDraft.")
     parser.add_argument(
+        "--accion",
+        default="generar",
+        choices=["generar", "ajustar", "aprobar", "rechazar", "preparar"],
+        help="Etapa del ciclo editorial local.",
+    )
+    parser.add_argument("--id-entrada", help="Identificador seguro de la entrada o sesión.")
+    parser.add_argument("--feedback", help="Feedback textual para crear una nueva versión.")
+    parser.add_argument("--version", type=int, help="Versión que se desea aprobar.")
+    parser.add_argument(
         "--estado-aprobacion",
-        required=True,
+        required=False,
         choices=["aprobado", "pendiente", "rechazado", "requiere_ajustes"],
         help="Estado de aprobacion humana para el flujo.",
     )
@@ -48,6 +78,8 @@ def _leer_entrada(path: str) -> EntradaContenido:
 
 
 def _build_aprobacion(args: argparse.Namespace) -> AprobacionHumana:
+    if not args.estado_aprobacion:
+        raise ValueError("estado_aprobacion es obligatorio en el flujo legacy.")
     estado = {
         "aprobado": EstadoAprobacion.APROBADO,
         "pendiente": EstadoAprobacion.PENDIENTE,
@@ -75,27 +107,146 @@ def _build_aprobacion(args: argparse.Namespace) -> AprobacionHumana:
     )
 
 
+def _entrada_desde_texto(args: argparse.Namespace) -> EntradaContenido:
+    if not args.id_entrada:
+        raise ValueError("--id-entrada es obligatorio cuando se usa --texto.")
+    return EntradaContenido(
+        id_entrada=args.id_entrada,
+        tipo_entrada=TipoEntrada.TEXTO_MANUAL,
+        texto_base=args.texto,
+        intencion_editorial=IntencionEditorial(
+            estado_intencion_editorial=EstadoIntencionEditorial.TENTATIVA,
+            idea_central=args.texto.strip()[:280],
+        ),
+        perfil_narrativo=PerfilNarrativoReferencia(id_perfil="perfil_default"),
+        canales_destino=["linkedin"],
+        estado_privacidad=EstadoPrivacidad(sanitizado=True),
+        restricciones={},
+    )
+
+
+def _mostrar_sesion(sesion) -> None:
+    version = next(item for item in sesion.versiones if item.numero == sesion.version_actual)
+    print(f"Entrada: {sesion.id_entrada}")
+    print(f"Fuente: {sesion.entrada.tipo_entrada.value}")
+    print(f"Versión: v{version.numero:03d}")
+    print(f"Idea usada: {version.idea_central}")
+    if len(version.ideas_candidatas) > 1:
+        print(f"Ideas candidatas: {len(version.ideas_candidatas)}")
+    intencion = (
+        sesion.entrada.intencion_editorial.objetivo_del_post
+        or sesion.entrada.intencion_editorial.estado_intencion_editorial.value
+    )
+    print(f"Intención: {intencion}")
+    print(f"Perfil: {sesion.entrada.perfil_narrativo.id_perfil}")
+    print(f"Diagnóstico estructural: {version.diagnostico_editorial.estado_revision.value}")
+    estados_legibles = {
+        "pendiente_revision": "pendiente de revisión",
+        "requiere_ajustes": "requiere ajustes",
+    }
+    print(f"Estado editorial: {estados_legibles.get(sesion.estado.value, sesion.estado.value)}")
+    print("\nBorrador:\n")
+    print(version.texto)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
 
     try:
-        entrada = _leer_entrada(args.input_json)
-        aprobacion = _build_aprobacion(args)
-        manifest = ejecutar_flujo_textual(
-            entrada=entrada,
-            adapter=construir_model_adapter(),
-            aprobacion=aprobacion,
-            base_dir=args.output_dir,
+        profile_resolver = FilesystemNarrativeProfileResolver(
+            profile_dir=os.getenv("LINKEDIN_CONTENT_PROFILE_DIR")
         )
+        channel_strategy = LinkedInTextChannelStrategy()
+
+        # Compatibilidad temporal del flujo anterior: solo se activa si se
+        # proporciona explícitamente un estado de aprobación.
+        if args.estado_aprobacion:
+            if not args.input_json:
+                raise ValueError("--input-json es obligatorio en el flujo legacy.")
+            entrada = _leer_entrada(args.input_json)
+            manifest = ejecutar_flujo_textual(
+                entrada=entrada,
+                adapter=construir_model_adapter(),
+                aprobacion=_build_aprobacion(args),
+                base_dir=args.output_dir,
+                publisher=LocalDraftPublisher(base_dir=args.output_dir),
+                profile_resolver=profile_resolver,
+                channel_strategy=channel_strategy,
+            )
+            print(
+                f"LocalDraft generado para {manifest.id_entrada}: "
+                f"localdraft_{manifest.id_entrada} ({manifest.id_evidencia})"
+            )
+            return 0
+
+        store = FilesystemEditorialSessionStore(args.output_dir)
+        if args.accion == "generar":
+            if not args.input_json and not args.texto:
+                raise ValueError("Debes indicar --input-json o --texto para generar.")
+            entrada = _leer_entrada(args.input_json) if args.input_json else _entrada_desde_texto(args)
+            sesion = generar_borrador_pendiente(
+                entrada=entrada,
+                adapter=construir_model_adapter(),
+                store=store,
+                profile_resolver=profile_resolver,
+                channel_strategy=channel_strategy,
+            )
+            _mostrar_sesion(sesion)
+            return 0
+
+        if not args.id_entrada:
+            raise ValueError("--id-entrada es obligatorio para esta acción.")
+        if args.accion == "ajustar":
+            sesion = solicitar_ajustes(
+                args.id_entrada,
+                args.feedback,
+                construir_model_adapter(),
+                store,
+                profile_resolver,
+                channel_strategy,
+            )
+            _mostrar_sesion(sesion)
+            return 0
+        if args.accion == "aprobar":
+            if not args.version or not args.revisor:
+                raise ValueError("--version y --revisor son obligatorios para aprobar.")
+            sesion = aprobar_version(
+                args.id_entrada,
+                args.version,
+                args.revisor,
+                args.fecha_aprobacion or datetime.now(timezone.utc).isoformat(),
+                store,
+                tipo_aprobacion={
+                    "simple": TipoAprobacion.SIMPLE,
+                    "reforzada": TipoAprobacion.REFORZADA,
+                }[args.tipo_aprobacion],
+                motivo_revision_reforzada=args.motivo_revision_reforzada,
+            )
+            print(f"Versión v{sesion.version_aprobada:03d} aprobada para {sesion.id_entrada}.")
+            return 0
+        if args.accion == "rechazar":
+            if not args.version or not args.feedback:
+                raise ValueError("--version y --feedback son obligatorios para rechazar.")
+            sesion = rechazar_version(
+                args.id_entrada,
+                args.version,
+                args.feedback,
+                store,
+            )
+            print(f"Versión v{sesion.version_actual:03d} rechazada para {sesion.id_entrada}.")
+            return 0
+        manifest = preparar_salida_aprobada(
+            args.id_entrada,
+            store,
+            LocalDraftPublisher(base_dir=args.output_dir),
+        )
+        print(f"LocalDraft preparado para {manifest.id_entrada}.")
+        return 0
     except (OSError, json.JSONDecodeError, ValidationError, ValueError, LiteLLMAdapterError) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1
 
-    print(
-        f"LocalDraft generado para {manifest.id_entrada}: "
-        f"localdraft_{manifest.id_entrada} ({manifest.id_evidencia})"
-    )
     return 0
 
 

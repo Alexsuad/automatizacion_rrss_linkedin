@@ -69,6 +69,7 @@ def test_cli_help():
 
     assert result.returncode == 0
     assert "input-json" in result.stdout
+    assert "--texto" in result.stdout
 
 
 def test_cli_aprobado_genera_localdraft(tmp_path):
@@ -234,3 +235,173 @@ def test_cli_sanea_litellm_provider_error_sin_traceback_ni_artefactos(tmp_path, 
     assert captured.out == ""
     assert not (tmp_path / "localdraft_in_cli_001").exists()
     assert list(tmp_path.iterdir()) == [input_path]
+
+
+def test_cli_input_inseguro_no_invoca_adapter_y_sanea_error(tmp_path, monkeypatch, capsys):
+    from linkedin_content_system.cli import flujo_textual as cli_module
+
+    entrada_insegura = _entrada_json()
+    entrada_insegura["texto_base"] = "Escribeme a contacto@dominio.com para compartir el caso real."
+    input_path = tmp_path / "entrada_insegura.json"
+    input_path.write_text(json.dumps(entrada_insegura, ensure_ascii=False), encoding="utf-8")
+
+    class _SpyAdapter:
+        def __init__(self):
+            self.invocado = False
+
+        def generar_texto(self, prompt, system_instruction=None):
+            self.invocado = True
+            return "No deberia ejecutarse"
+
+    adapter = _SpyAdapter()
+
+    def _fake_construir_model_adapter():
+        return adapter
+
+    monkeypatch.setattr(cli_module, "construir_model_adapter", _fake_construir_model_adapter)
+
+    exit_code = cli_module.main(
+        [
+            "--input-json",
+            str(input_path),
+            "--output-dir",
+            str(tmp_path),
+            "--estado-aprobacion",
+            "aprobado",
+            "--revisor",
+            "QA Local",
+            "--fecha-aprobacion",
+            "2026-07-10T12:00:00Z",
+        ]
+    )
+
+    captured = capsys.readouterr()
+
+    assert exit_code == 1
+    assert adapter.invocado is False
+    assert "ERROR:" in captured.err
+    assert "correo electrónico" in captured.err
+    assert "Traceback" not in captured.err
+    assert captured.out == ""
+    assert not (tmp_path / "localdraft_in_cli_001").exists()
+    assert list(tmp_path.iterdir()) == [input_path]
+
+
+def test_cli_texto_genera_borrador_pendiente_sin_aprobacion(tmp_path):
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "linkedin_content_system.cli.flujo_textual",
+            "--texto",
+            "Automatizar lo repetitivo deja mas tiempo para aplicar criterio humano.",
+            "--id-entrada",
+            "in_cli_texto_001",
+            "--output-dir",
+            str(tmp_path),
+        ],
+        capture_output=True,
+        text=True,
+        env=_cli_env(),
+    )
+
+    assert result.returncode == 0
+    assert "pendiente de revisión" in result.stdout.lower()
+    assert "intención:" in result.stdout.lower()
+    assert "perfil:" in result.stdout.lower()
+    assert "diagnóstico estructural:" in result.stdout.lower()
+    assert (tmp_path / "editorial_in_cli_texto_001" / "versiones" / "v001.md").exists()
+    assert not (tmp_path / "localdraft_in_cli_texto_001").exists()
+
+
+def test_cli_ciclo_completo_ajusta_aprueba_y_prepara(tmp_path):
+    comandos = [
+        [
+            "--texto",
+            "Un borrador revisable ayuda a conservar la intención antes de publicar.",
+            "--id-entrada",
+            "in_cli_ciclo_001",
+            "--output-dir",
+            str(tmp_path),
+        ],
+        [
+            "--accion",
+            "ajustar",
+            "--id-entrada",
+            "in_cli_ciclo_001",
+            "--feedback",
+            "Haz más directa la apertura.",
+            "--output-dir",
+            str(tmp_path),
+        ],
+        [
+            "--accion",
+            "aprobar",
+            "--id-entrada",
+            "in_cli_ciclo_001",
+            "--version",
+            "2",
+            "--revisor",
+            "Revisión Sintética",
+            "--tipo-aprobacion",
+            "reforzada",
+            "--motivo-revision-reforzada",
+            "La intención inicial es tentativa y requiere revisión explícita.",
+            "--output-dir",
+            str(tmp_path),
+        ],
+        [
+            "--accion",
+            "preparar",
+            "--id-entrada",
+            "in_cli_ciclo_001",
+            "--output-dir",
+            str(tmp_path),
+        ],
+    ]
+
+    for argumentos in comandos:
+        result = subprocess.run(
+            [sys.executable, "-m", "linkedin_content_system.cli.flujo_textual", *argumentos],
+            capture_output=True,
+            text=True,
+            env=_cli_env(),
+        )
+        assert result.returncode == 0, result.stderr
+
+    assert (tmp_path / "editorial_in_cli_ciclo_001" / "versiones" / "v002.md").exists()
+    assert (tmp_path / "localdraft_in_cli_ciclo_001" / "post.md").exists()
+
+
+def test_cli_no_anuncia_aprobacion_simple_si_la_version_requiere_refuerzo(tmp_path):
+    from linkedin_content_system.cli import flujo_textual as cli_module
+
+    exit_code = cli_module.main(
+        [
+            "--texto",
+            "Una nota breve para activar el ciclo editorial.",
+            "--id-entrada",
+            "in_cli_warn_001",
+            "--output-dir",
+            str(tmp_path),
+        ]
+    )
+    assert exit_code == 0
+
+    exit_code = cli_module.main(
+        [
+            "--accion",
+            "aprobar",
+            "--id-entrada",
+            "in_cli_warn_001",
+            "--version",
+            "1",
+            "--revisor",
+            "Revisor Sintetico",
+            "--output-dir",
+            str(tmp_path),
+        ]
+    )
+
+    assert exit_code == 1
+    assert not (tmp_path / "localdraft_in_cli_warn_001").exists()

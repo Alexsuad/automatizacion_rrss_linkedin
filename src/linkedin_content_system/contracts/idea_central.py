@@ -9,6 +9,7 @@ class IdeaCentral(BaseModel):
     idea_central: str
     resumen_operativo: str
     puntos_de_soporte: list[str] = Field(default_factory=list)
+    ideas_candidatas: list[str] = Field(default_factory=list)
     limites_de_inferencia: list[str] = Field(default_factory=list)
 
     @field_validator("idea_central", "resumen_operativo")

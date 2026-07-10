@@ -1,6 +1,8 @@
 import datetime
 import json
 import os
+import shutil
+import tempfile
 from typing import Callable, Optional
 
 from linkedin_content_system.contracts import (
@@ -45,43 +47,48 @@ class ExternalDryRunPublisher(PublicationPublisherPort):
             raise ValueError(
                 f"Acceso denegado: el directorio destino '{os.path.basename(target_dir)}' ya existe."
             )
+        temp_dir = tempfile.mkdtemp(prefix=f".external_dryrun_{id_entrada}_", dir=self.base_dir)
 
-        os.makedirs(target_dir, exist_ok=False)
+        try:
+            canal_destino = getattr(salida, "canal_destino", None) or self.canal_destino
+            timestamp = self.clock() if self.clock else datetime.datetime.now(datetime.timezone.utc).isoformat()
+            id_externo_simulado = f"dryrun-{id_entrada}"
 
-        canal_destino = getattr(salida, "canal_destino", None) or self.canal_destino
-        timestamp = self.clock() if self.clock else datetime.datetime.now(datetime.timezone.utc).isoformat()
-        id_externo_simulado = f"dryrun-{id_entrada}"
+            payload = {
+                "modo": _MODO_DRY_RUN,
+                "proveedor": _PROVEEDOR_SIMULADO,
+                "canal_destino": canal_destino,
+                "no_publicado_realmente": True,
+                "id_entrada": id_entrada,
+                "id_externo_simulado": id_externo_simulado,
+                "timestamp": timestamp,
+                "estado_publicabilidad_origen": salida.estado_publicabilidad.value,
+                "salida_origen": salida.model_dump(),
+            }
 
-        payload = {
-            "modo": _MODO_DRY_RUN,
-            "proveedor": _PROVEEDOR_SIMULADO,
-            "canal_destino": canal_destino,
-            "no_publicado_realmente": True,
-            "id_entrada": id_entrada,
-            "id_externo_simulado": id_externo_simulado,
-            "timestamp": timestamp,
-            "estado_publicabilidad_origen": salida.estado_publicabilidad.value,
-            "salida_origen": salida.model_dump(),
-        }
+            payload_path = os.path.join(temp_dir, "publicacion_simulada.json")
+            manifest_path = os.path.join(temp_dir, "manifest.json")
 
-        payload_path = os.path.join(target_dir, "publicacion_simulada.json")
-        manifest_path = os.path.join(target_dir, "manifest.json")
+            with open(payload_path, "w", encoding="utf-8") as f:
+                json.dump(payload, f, indent=2, ensure_ascii=False)
 
-        with open(payload_path, "w", encoding="utf-8") as f:
-            json.dump(payload, f, indent=2, ensure_ascii=False)
+            manifest = ManifestEvidencia(
+                id_evidencia=f"ev_external_{id_entrada}",
+                id_entrada=id_entrada,
+                archivos_generados=[
+                    f"external_dryrun_{id_entrada}/publicacion_simulada.json",
+                    f"external_dryrun_{id_entrada}/manifest.json",
+                ],
+                estado=EstadoEvidencia.GUARDADO_LOCAL,
+                timestamp=timestamp,
+            )
 
-        manifest = ManifestEvidencia(
-            id_evidencia=f"ev_external_{id_entrada}",
-            id_entrada=id_entrada,
-            archivos_generados=[
-                f"external_dryrun_{id_entrada}/publicacion_simulada.json",
-                f"external_dryrun_{id_entrada}/manifest.json",
-            ],
-            estado=EstadoEvidencia.GUARDADO_LOCAL,
-            timestamp=timestamp,
-        )
+            with open(manifest_path, "w", encoding="utf-8") as f:
+                json.dump(manifest.model_dump(), f, indent=2, ensure_ascii=False)
 
-        with open(manifest_path, "w", encoding="utf-8") as f:
-            json.dump(manifest.model_dump(), f, indent=2, ensure_ascii=False)
-
-        return manifest
+            os.replace(temp_dir, target_dir)
+            temp_dir = None
+            return manifest
+        finally:
+            if temp_dir and os.path.exists(temp_dir):
+                shutil.rmtree(temp_dir, ignore_errors=True)

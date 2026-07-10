@@ -11,6 +11,14 @@ from .validar_compatibilidad_contexto import validar_compatibilidad_contexto
 from .validar_cambio_contexto import validar_cambio_contexto
 from .ejecutar_pipeline_contexto_offline import ejecutar_pipeline_contexto_offline
 from .construir_evidencia_contexto_usado import construir_evidencia_contexto_usado
+from .ciclo_editorial_textual import (
+    FilesystemEditorialSessionStore,
+    aprobar_version,
+    generar_borrador_pendiente,
+    preparar_salida_aprobada,
+    rechazar_version,
+    solicitar_ajustes,
+)
 
 __all__ = [
     "generar_borrador_local_desde_simulacion",
@@ -26,9 +34,13 @@ __all__ = [
     "validar_cambio_contexto",
     "ejecutar_pipeline_contexto_offline",
     "construir_evidencia_contexto_usado"
+    ,"FilesystemEditorialSessionStore"
+    ,"aprobar_version"
+    ,"generar_borrador_pendiente"
+    ,"preparar_salida_aprobada"
+    ,"rechazar_version"
+    ,"solicitar_ajustes"
 ]
-
-
 
 
 

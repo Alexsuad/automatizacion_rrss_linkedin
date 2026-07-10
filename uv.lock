@@ -634,8 +634,12 @@ name = "linkedin-content-system"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
-    { name = "litellm" },
     { name = "pydantic" },
+]
+
+[package.optional-dependencies]
+ai-real = [
+    { name = "litellm" },
 ]
 
 [package.dev-dependencies]
@@ -645,9 +649,10 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "litellm", specifier = ">=1.91.1" },
+    { name = "litellm", marker = "extra == 'ai-real'", specifier = ">=1.91.1" },
     { name = "pydantic", specifier = ">=2.13.4" },
 ]
+provides-extras = ["ai-real"]
 
 [package.metadata.requires-dev]
 dev = [{ name = "pytest", specifier = ">=9.1.1" }]

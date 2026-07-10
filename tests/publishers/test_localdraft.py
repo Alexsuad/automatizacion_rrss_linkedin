@@ -1,6 +1,7 @@
 import os
 import json
 import pytest
+import linkedin_content_system.publishers.localdraft as localdraft_module
 from pydantic import ValidationError
 from linkedin_content_system.contracts import (
     SalidaLocalDraft, PostCandidato, DiagnosticoEditorial, AprobacionHumana, EstadoAprobacion,
@@ -181,6 +182,26 @@ def test_localdraft_clock_determinista(tmp_path, salida_valida):
     manifest = publisher.guardar(salida_valida, id_entrada="103")
     
     assert manifest.timestamp == fake_time
+
+
+def test_localdraft_limpia_directorio_temporal_si_falla_la_escritura(tmp_path, salida_valida, monkeypatch):
+    publisher = LocalDraftPublisher(base_dir=str(tmp_path))
+    original_dump = localdraft_module.json.dump
+    llamadas = {"count": 0}
+
+    def _failing_dump(data, handle, *args, **kwargs):
+        llamadas["count"] += 1
+        if llamadas["count"] == 2:
+            raise OSError("fallo simulado de escritura")
+        return original_dump(data, handle, *args, **kwargs)
+
+    monkeypatch.setattr(localdraft_module.json, "dump", _failing_dump)
+
+    with pytest.raises(OSError, match="fallo simulado"):
+        publisher.guardar(salida_valida, id_entrada="atomic_fail")
+
+    assert not (tmp_path / "localdraft_atomic_fail").exists()
+    assert not [path for path in tmp_path.iterdir() if path.name.startswith(".localdraft_atomic_fail_")]
 
 def test_localdraft_bloquea_si_aprobacion_pendiente(tmp_path, diagnostico_pass):
     publisher = LocalDraftPublisher(base_dir=str(tmp_path))

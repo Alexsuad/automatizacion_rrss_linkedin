@@ -60,3 +60,16 @@ def test_extraer_idea_central_es_determinista():
     res1 = extraer_idea_central(texto)
     res2 = extraer_idea_central(texto)
     assert res1 == res2
+
+
+def test_extraer_idea_central_propone_varias_ideas_en_texto_largo():
+    texto = (
+        "Automatizar tareas repetitivas libera tiempo para pensar. "
+        "El criterio humano sigue siendo necesario para decidir qué merece publicarse. "
+        "Un flujo revisable permite corregir antes de distribuir contenido."
+    )
+
+    resultado = extraer_idea_central(texto)
+
+    assert len(resultado.ideas_candidatas) >= 2
+    assert resultado.idea_central == resultado.ideas_candidatas[0]

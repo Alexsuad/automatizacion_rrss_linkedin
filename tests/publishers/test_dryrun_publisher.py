@@ -2,6 +2,7 @@ import json
 import socket
 
 import pytest
+import linkedin_content_system.publishers.dryrun as dryrun_module
 
 from linkedin_content_system.contracts import (
     AprobacionHumana,
@@ -197,3 +198,23 @@ def test_external_dryrun_bloquea_bloqueos_criticos(tmp_path, aprobacion_aprobada
 
     with pytest.raises(ValueError, match="bloqueos críticos"):
         publisher.guardar(salida_bloqueada, id_entrada="205")
+
+
+def test_external_dryrun_limpia_directorio_temporal_si_falla_la_escritura(tmp_path, salida_valida, monkeypatch):
+    publisher = ExternalDryRunPublisher(base_dir=str(tmp_path))
+    original_dump = dryrun_module.json.dump
+    llamadas = {"count": 0}
+
+    def _failing_dump(data, handle, *args, **kwargs):
+        llamadas["count"] += 1
+        if llamadas["count"] == 2:
+            raise OSError("fallo simulado dryrun")
+        return original_dump(data, handle, *args, **kwargs)
+
+    monkeypatch.setattr(dryrun_module.json, "dump", _failing_dump)
+
+    with pytest.raises(OSError, match="fallo simulado dryrun"):
+        publisher.guardar(salida_valida, id_entrada="206")
+
+    assert not (tmp_path / "external_dryrun_206").exists()
+    assert not [path for path in tmp_path.iterdir() if path.name.startswith(".external_dryrun_206_")]

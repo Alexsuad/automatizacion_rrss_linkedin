@@ -1,24 +1,82 @@
 from __future__ import annotations
 
+import importlib
 import os
 from typing import Any, Optional
 
-try:
-    import litellm
-except ImportError:  # pragma: no cover - solo si falta la dependencia instalada
-    litellm = None
-
 from linkedin_content_system.ai.ports import ModelAdapter
 
+DEFAULT_TIMEOUT_SECONDS = 30.0
+DEFAULT_MAX_TOKENS = 280
+_LITELLM_UNSET = object()
+litellm: Any = _LITELLM_UNSET
 
-class LiteLLMAdapterError(ValueError):
-    """Error controlado del adaptador real de IA."""
+
+class LiteLLMAdapterError(RuntimeError):
+    """Error base del adaptador LiteLLM."""
+
+
+class LiteLLMConfigurationError(LiteLLMAdapterError):
+    """Configuracion o entrada invalida para usar el adaptador real."""
+
+
+class LiteLLMProviderError(LiteLLMAdapterError):
+    """Fallo externo del proveedor o de la red al generar texto."""
+
+
+class LiteLLMResponseError(LiteLLMAdapterError):
+    """La respuesta del proveedor no contiene texto utilizable."""
 
 
 def _resolver_modelo(modelo: str, proveedor: Optional[str]) -> str:
     if proveedor and "/" not in modelo:
         return f"{proveedor}/{modelo}"
     return modelo
+
+
+def _parsear_timeout(timeout_seconds: Optional[float]) -> float:
+    raw_timeout = timeout_seconds
+    if raw_timeout is None:
+        raw_timeout = os.getenv("LINKEDIN_CONTENT_AI_TIMEOUT_SECONDS", DEFAULT_TIMEOUT_SECONDS)
+
+    try:
+        timeout = float(raw_timeout)
+    except (TypeError, ValueError) as exc:
+        raise LiteLLMConfigurationError("El timeout del adaptador real debe ser numerico y positivo.") from exc
+
+    if timeout <= 0:
+        raise LiteLLMConfigurationError("El timeout del adaptador real debe ser numerico y positivo.")
+    return timeout
+
+
+def _parsear_max_tokens(max_tokens: Optional[int]) -> int:
+    raw_max_tokens = max_tokens
+    if raw_max_tokens is None:
+        raw_max_tokens = os.getenv("LINKEDIN_CONTENT_AI_MAX_TOKENS", str(DEFAULT_MAX_TOKENS))
+
+    try:
+        tokens = int(str(raw_max_tokens).strip())
+    except (TypeError, ValueError) as exc:
+        raise LiteLLMConfigurationError(
+            "LINKEDIN_CONTENT_AI_MAX_TOKENS (max_tokens) debe ser un entero positivo."
+        ) from exc
+
+    if tokens <= 0:
+        raise LiteLLMConfigurationError(
+            "LINKEDIN_CONTENT_AI_MAX_TOKENS (max_tokens) debe ser un entero positivo."
+        )
+    return tokens
+
+
+def _resolver_litellm() -> Any:
+    global litellm
+
+    if litellm is _LITELLM_UNSET:
+        try:
+            litellm = importlib.import_module("litellm")
+        except ImportError:
+            litellm = None
+    return litellm
 
 
 def _extraer_texto_respuesta(respuesta: Any) -> str:
@@ -49,6 +107,39 @@ def _extraer_texto_respuesta(respuesta: Any) -> str:
     return ""
 
 
+def _es_error_de_configuracion(exc: Exception, client: Any) -> bool:
+    nombre = exc.__class__.__name__.lower()
+    mensaje = str(exc).lower()
+
+    clases_config = (
+        "authenticationerror",
+        "permissiondeniederror",
+        "badrequesterror",
+    )
+    if nombre in clases_config:
+        return True
+
+    for attr in ("AuthenticationError", "PermissionDeniedError", "BadRequestError"):
+        candidate = getattr(client, attr, None)
+        if candidate is not None and isinstance(exc, candidate):
+            return True
+
+    return any(
+        marca in mensaje
+        for marca in (
+            "authentication",
+            "unauthorized",
+            "invalid api key",
+            "api key",
+            "credential",
+            "permission denied",
+            "model not found",
+            "invalid model",
+            "configuration",
+        )
+    )
+
+
 class LiteLLMModelAdapter(ModelAdapter):
     """
     Adaptador real configurable detrás de LiteLLM.
@@ -60,18 +151,18 @@ class LiteLLMModelAdapter(ModelAdapter):
         self,
         modelo: Optional[str] = None,
         proveedor: Optional[str] = None,
-        timeout_seconds: float = 30.0,
+        timeout_seconds: Optional[float] = None,
+        max_tokens: Optional[int] = None,
     ) -> None:
         self.modelo = (modelo or os.getenv("LINKEDIN_CONTENT_AI_MODEL") or "").strip()
         self.proveedor = (proveedor or os.getenv("LINKEDIN_CONTENT_AI_PROVIDER") or "").strip() or None
-        self.timeout_seconds = timeout_seconds
+        self.timeout_seconds = _parsear_timeout(timeout_seconds)
+        self.max_tokens = _parsear_max_tokens(max_tokens)
 
         if not self.modelo:
-            raise LiteLLMAdapterError(
+            raise LiteLLMConfigurationError(
                 "Falta configurar el modelo real para LINKEDIN_CONTENT_AI_ADAPTER=litellm."
             )
-        if self.timeout_seconds <= 0:
-            raise LiteLLMAdapterError("El timeout del adaptador real debe ser positivo.")
 
     def generar_texto(
         self,
@@ -79,9 +170,13 @@ class LiteLLMModelAdapter(ModelAdapter):
         system_instruction: Optional[str] = None,
     ) -> str:
         if not prompt or not prompt.strip():
-            raise LiteLLMAdapterError("El prompt no puede estar vacío.")
-        if litellm is None:
-            raise LiteLLMAdapterError("La dependencia litellm no está disponible en este entorno.")
+            raise LiteLLMConfigurationError("El prompt no puede estar vacío.")
+
+        client = _resolver_litellm()
+        if client is None:
+            raise LiteLLMConfigurationError(
+                "La dependencia litellm no está disponible. Instala la dependencia para usar el modo real."
+            )
 
         messages = []
         if system_instruction and system_instruction.strip():
@@ -89,18 +184,23 @@ class LiteLLMModelAdapter(ModelAdapter):
         messages.append({"role": "user", "content": prompt.strip()})
 
         try:
-            respuesta = litellm.completion(
+            respuesta = client.completion(
                 model=_resolver_modelo(self.modelo, self.proveedor),
                 messages=messages,
                 timeout=self.timeout_seconds,
                 temperature=0.2,
+                max_tokens=self.max_tokens,
             )
-        except Exception as exc:  # pragma: no cover - la red/proveedor se stubbea en tests
-            raise LiteLLMAdapterError(
-                "No se pudo generar texto con el proveedor IA configurado."
+        except Exception as exc:  # pragma: no cover - tests stubbean el proveedor
+            if _es_error_de_configuracion(exc, client):
+                raise LiteLLMConfigurationError(
+                    "No se pudo generar texto por una credencial o configuración inválida del proveedor IA."
+                ) from exc
+            raise LiteLLMProviderError(
+                "No se pudo generar texto por un fallo externo del proveedor IA."
             ) from exc
 
         contenido = _extraer_texto_respuesta(respuesta).strip()
         if not contenido:
-            raise LiteLLMAdapterError("El proveedor IA no devolvió contenido utilizable.")
+            raise LiteLLMResponseError("El proveedor IA devolvió una respuesta sin contenido utilizable.")
         return contenido

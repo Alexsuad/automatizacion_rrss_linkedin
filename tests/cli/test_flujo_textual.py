@@ -3,6 +3,7 @@ import os
 import subprocess
 import sys
 
+from linkedin_content_system.ai import LiteLLMProviderError
 from linkedin_content_system.contracts import (
     EntradaContenido,
     EstadoIntencionEditorial,
@@ -186,3 +187,50 @@ def test_cli_aprobado_con_entrada_realista_genera_localdraft_util(tmp_path):
     assert "[BORRADOR SIMULADO DE POST]" not in contenido
     assert "La utilidad real empieza con un flujo simple y seguro" in contenido
     assert "¿Te pasa lo mismo?" in contenido
+
+
+def test_cli_sanea_litellm_provider_error_sin_traceback_ni_artefactos(tmp_path, monkeypatch, capsys):
+    from linkedin_content_system.cli import flujo_textual as cli_module
+
+    input_path = tmp_path / "entrada_error.json"
+    input_path.write_text(json.dumps(_entrada_json(), ensure_ascii=False), encoding="utf-8")
+
+    class _AdapterQueFalla:
+        def generar_texto(self, prompt, system_instruction=None):
+            raise AssertionError("No deberia invocarse directamente en este test")
+
+    def _fake_construir_model_adapter():
+        return _AdapterQueFalla()
+
+    def _fake_ejecutar_flujo_textual(**kwargs):
+        raise LiteLLMProviderError(
+            "No se pudo generar texto con el proveedor IA configurado."
+        ) from RuntimeError("provider-secret-detail")
+
+    monkeypatch.setattr(cli_module, "construir_model_adapter", _fake_construir_model_adapter)
+    monkeypatch.setattr(cli_module, "ejecutar_flujo_textual", _fake_ejecutar_flujo_textual)
+
+    exit_code = cli_module.main(
+        [
+            "--input-json",
+            str(input_path),
+            "--output-dir",
+            str(tmp_path),
+            "--estado-aprobacion",
+            "aprobado",
+            "--revisor",
+            "Smoke Local",
+            "--fecha-aprobacion",
+            "2026-07-10T12:00:00Z",
+        ]
+    )
+
+    captured = capsys.readouterr()
+
+    assert exit_code == 1
+    assert "ERROR: No se pudo generar texto con el proveedor IA configurado." in captured.err
+    assert "provider-secret-detail" not in captured.err
+    assert "Traceback" not in captured.err
+    assert captured.out == ""
+    assert not (tmp_path / "localdraft_in_cli_001").exists()
+    assert list(tmp_path.iterdir()) == [input_path]

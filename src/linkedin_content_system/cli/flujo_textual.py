@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 
 from pydantic import ValidationError
 
-from linkedin_content_system.ai import construir_model_adapter
+from linkedin_content_system.ai import LiteLLMAdapterError, construir_model_adapter
 from linkedin_content_system.contracts import (
     AprobacionHumana,
     EntradaContenido,
@@ -88,7 +88,7 @@ def main(argv: list[str] | None = None) -> int:
             aprobacion=aprobacion,
             base_dir=args.output_dir,
         )
-    except (OSError, json.JSONDecodeError, ValidationError, ValueError) as exc:
+    except (OSError, json.JSONDecodeError, ValidationError, ValueError, LiteLLMAdapterError) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1
 

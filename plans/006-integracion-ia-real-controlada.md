@@ -66,6 +66,33 @@ Why:
 
 ## Smoke real
 
+Preparar input sintético válido:
+
+```bash
+cat > /tmp/plan006_smoke_input.json <<'JSON'
+{
+  "id_entrada": "plan006_smoke_001",
+  "tipo_entrada": "texto_manual",
+  "texto_base": "La automatización útil reduce tareas repetitivas sin reemplazar el criterio humano.",
+  "intencion_editorial": {
+    "estado_intencion_editorial": "completa",
+    "audiencia_objetivo": "Profesionales y equipos pequenos",
+    "objetivo_del_post": "Crear un borrador breve con tono natural y una pregunta final concreta",
+    "idea_central": "Automatizar lo repetitivo sin sustituir el criterio humano",
+    "cta_intencionado": "¿Que tarea repetitiva automatizarias primero?"
+  },
+  "perfil_narrativo": {
+    "id_perfil": "perfil_smoke_plan_006"
+  },
+  "canales_destino": ["linkedin"],
+  "estado_privacidad": {
+    "sanitizado": true
+  },
+  "restricciones": {}
+}
+JSON
+```
+
 Comando:
 
 `LINKEDIN_CONTENT_AI_ADAPTER=litellm LINKEDIN_CONTENT_AI_PROVIDER=<proveedor> LINKEDIN_CONTENT_AI_MODEL=<modelo> LINKEDIN_CONTENT_AI_MAX_TOKENS=120 UV_CACHE_DIR=/tmp/uv-cache uv run python -m linkedin_content_system.cli.flujo_textual --input-json /tmp/plan006_smoke_input.json --output-dir /tmp/plan006-smoke-output --estado-aprobacion aprobado --revisor "Smoke Local" --fecha-aprobacion 2026-07-10T12:00:00Z`

@@ -1,0 +1,16 @@
+{
+  "id_entrada": "smoke_editorial_001",
+  "tipo_entrada": "texto_manual",
+  "texto_base": "Automatizar tareas repetitivas libera tiempo sin reemplazar el criterio humano.",
+  "intencion_editorial": {
+    "estado_intencion_editorial": "completa",
+    "audiencia_objetivo": "profesionales y equipos pequeños",
+    "objetivo_del_post": "crear un borrador breve con tono natural",
+    "idea_central": "Automatizar lo repetitivo sin sustituir el criterio humano",
+    "cta_intencionado": "¿Qué decisión mantendrías bajo revisión humana?"
+  },
+  "perfil_narrativo": {"id_perfil": "perfil_claro"},
+  "canales_destino": ["linkedin"],
+  "estado_privacidad": {"sanitizado": true},
+  "restricciones": {}
+}

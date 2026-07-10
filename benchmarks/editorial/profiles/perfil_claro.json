@@ -1,0 +1,12 @@
+{
+  "id_perfil": "perfil_claro",
+  "voz_marca": {
+    "tono_base": {"descripcion": "Claro, directo y práctico."},
+    "tono_prohibido": {"descripcion": "Grandilocuente, urgente o promocional."}
+  },
+  "lenguaje": {
+    "palabras_frecuentes": ["criterio", "revisión", "evidencia"],
+    "frases_prohibidas": ["solución revolucionaria", "éxito garantizado"]
+  },
+  "cta": {"cta_preferidos": ["pregunta concreta"]}
+}

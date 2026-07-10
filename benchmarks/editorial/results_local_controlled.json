@@ -1,0 +1,78 @@
+{
+  "adapter": "controlled",
+  "fecha": "2026-07-10",
+  "evaluado_por": "Codex (revisión asistida local)",
+  "fecha_evaluacion": "2026-07-10",
+  "version_rubrica": "1.0",
+  "referencia_evidencia": "fixtures.json, perfiles sintéticos y versión v001 de cada sesión local",
+  "hash_fixture": "6212202b56c1154e9d8f42f575f4d324bfd25398aa7218c85b53e82934e4382b",
+  "hash_salida": "7fac72f1c529df21989583dd4f595bf2c0d8b529ebadd13dcc381cb1156b39b1",
+  "gate": "4 de 5 piezas aprovechables sin reescritura completa",
+  "resultado": "PASS_CON_RIESGO_DE_VOZ_GENERICA",
+  "piezas_aprovechables": 5,
+  "total": 5,
+  "publicacion_real": false,
+  "conclusion": "5/5 aprovechables como base editable; 0/5 validadas como listas para publicar o como voz natural del cliente.",
+  "evaluaciones": [
+    {
+      "id_entrada": "benchmark_01",
+      "version": 1,
+      "fidelidad": 5,
+      "voz": 2,
+      "claridad": 4,
+      "utilidad": 3,
+      "publicabilidad": 3,
+      "esfuerzo_correccion": 3,
+      "veredicto": "APROVECHABLE",
+      "observacion": "Conserva la tesis y el cierre; necesita reducir formulaciones genéricas."
+    },
+    {
+      "id_entrada": "benchmark_02",
+      "version": 1,
+      "fidelidad": 5,
+      "voz": 2,
+      "claridad": 4,
+      "utilidad": 3,
+      "publicabilidad": 3,
+      "esfuerzo_correccion": 3,
+      "veredicto": "APROVECHABLE",
+      "observacion": "La experiencia se entiende, pero el tono reflexivo no se diferencia claramente."
+    },
+    {
+      "id_entrada": "benchmark_03",
+      "version": 1,
+      "fidelidad": 5,
+      "voz": 2,
+      "claridad": 4,
+      "utilidad": 3,
+      "publicabilidad": 3,
+      "esfuerzo_correccion": 3,
+      "veredicto": "APROVECHABLE",
+      "observacion": "La postura prudente permanece; requiere una apertura menos formularia."
+    },
+    {
+      "id_entrada": "benchmark_04",
+      "version": 1,
+      "fidelidad": 5,
+      "voz": 2,
+      "claridad": 4,
+      "utilidad": 3,
+      "publicabilidad": 3,
+      "esfuerzo_correccion": 3,
+      "veredicto": "APROVECHABLE",
+      "observacion": "Es técnicamente fiel y clara; necesita más naturalidad editorial."
+    },
+    {
+      "id_entrada": "benchmark_05",
+      "version": 1,
+      "fidelidad": 5,
+      "voz": 2,
+      "claridad": 4,
+      "utilidad": 3,
+      "publicabilidad": 3,
+      "esfuerzo_correccion": 3,
+      "veredicto": "APROVECHABLE",
+      "observacion": "Defiende bien el ciclo editorial; requiere edición parcial para sonar menos genérica."
+    }
+  ]
+}

@@ -1,0 +1,87 @@
+[
+  {
+    "id_entrada": "benchmark_01",
+    "tipo_entrada": "texto_manual",
+    "texto_base": "Automatizar tareas repetitivas libera tiempo para pensar. El criterio humano sigue siendo necesario para decidir qué merece publicarse.",
+    "intencion_editorial": {
+      "estado_intencion_editorial": "completa",
+      "audiencia_objetivo": "equipos pequeños que empiezan a automatizar",
+      "objetivo_del_post": "compartir un aprendizaje práctico",
+      "tipo_de_post": "aprendizaje",
+      "idea_central": "Automatizar lo repetitivo sin sustituir el criterio humano",
+      "cta_intencionado": "¿Qué decisión mantendrías siempre bajo revisión humana?"
+    },
+    "perfil_narrativo": {"id_perfil": "perfil_claro"},
+    "canales_destino": ["linkedin"],
+    "estado_privacidad": {"sanitizado": true},
+    "restricciones": {}
+  },
+  {
+    "id_entrada": "benchmark_02",
+    "tipo_entrada": "texto_manual",
+    "texto_base": "Un prototipo pequeño permitió descubrir una necesidad que el plan inicial no contemplaba. Probar pronto evitó construir una solución demasiado grande.",
+    "intencion_editorial": {
+      "estado_intencion_editorial": "completa",
+      "audiencia_objetivo": "personas que desarrollan productos digitales",
+      "objetivo_del_post": "explicar el valor de validar temprano",
+      "tipo_de_post": "experiencia de desarrollo",
+      "idea_central": "Un prototipo pequeño reduce el coste de aprender",
+      "cta_intencionado": "¿Qué has aprendido antes gracias a un prototipo?"
+    },
+    "perfil_narrativo": {"id_perfil": "perfil_reflexivo"},
+    "canales_destino": ["linkedin"],
+    "estado_privacidad": {"sanitizado": true},
+    "restricciones": {}
+  },
+  {
+    "id_entrada": "benchmark_03",
+    "tipo_entrada": "texto_manual",
+    "texto_base": "Añadir inteligencia artificial a un proceso confuso no elimina la confusión. Primero conviene definir qué decisión se quiere mejorar y qué evidencia permitirá revisarla.",
+    "intencion_editorial": {
+      "estado_intencion_editorial": "completa",
+      "audiencia_objetivo": "profesionales que evalúan usos de inteligencia artificial",
+      "objetivo_del_post": "plantear una opinión prudente",
+      "tipo_de_post": "opinión",
+      "idea_central": "La inteligencia artificial necesita un proceso revisable",
+      "cta_intencionado": "¿Qué señal usarías para saber si realmente mejora el proceso?"
+    },
+    "perfil_narrativo": {"id_perfil": "perfil_claro"},
+    "canales_destino": ["linkedin"],
+    "estado_privacidad": {"sanitizado": true},
+    "restricciones": {}
+  },
+  {
+    "id_entrada": "benchmark_04",
+    "tipo_entrada": "texto_manual",
+    "texto_base": "Cuando una automatización falla en silencio, el equipo pierde confianza. Una evidencia local sencilla puede hacer visible qué ocurrió antes de conectar sistemas externos.",
+    "intencion_editorial": {
+      "estado_intencion_editorial": "completa",
+      "audiencia_objetivo": "equipos técnicos pequeños",
+      "objetivo_del_post": "mostrar una práctica de ingeniería",
+      "tipo_de_post": "aprendizaje técnico",
+      "idea_central": "La trazabilidad local construye confianza antes de integrar",
+      "cta_intencionado": "¿Qué evidencia mínima guardarías en cada ejecución?"
+    },
+    "perfil_narrativo": {"id_perfil": "perfil_reflexivo"},
+    "canales_destino": ["linkedin"],
+    "estado_privacidad": {"sanitizado": true},
+    "restricciones": {}
+  },
+  {
+    "id_entrada": "benchmark_05",
+    "tipo_entrada": "texto_manual",
+    "texto_base": "Publicar más no siempre significa comunicar mejor. Un ciclo breve de borrador, revisión y ajuste ayuda a conservar la intención original sin frenar el trabajo.",
+    "intencion_editorial": {
+      "estado_intencion_editorial": "completa",
+      "audiencia_objetivo": "profesionales que crean contenido",
+      "objetivo_del_post": "defender un proceso editorial ligero",
+      "tipo_de_post": "reflexión profesional",
+      "idea_central": "Revisar antes de publicar protege la intención",
+      "cta_intencionado": "¿Qué parte de tu revisión aporta más valor?"
+    },
+    "perfil_narrativo": {"id_perfil": "perfil_claro"},
+    "canales_destino": ["linkedin"],
+    "estado_privacidad": {"sanitizado": true},
+    "restricciones": {}
+  }
+]

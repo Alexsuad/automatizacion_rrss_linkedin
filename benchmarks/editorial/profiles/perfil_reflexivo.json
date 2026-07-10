@@ -1,0 +1,12 @@
+{
+  "id_perfil": "perfil_reflexivo",
+  "voz_marca": {
+    "tono_base": {"descripcion": "Reflexivo, sobrio y cercano."},
+    "tono_prohibido": {"descripcion": "Categórico, exagerado o con autoridad fingida."}
+  },
+  "lenguaje": {
+    "expresiones_propias": ["conviene observar", "aprendizaje verificable"],
+    "frases_prohibidas": ["todo el mundo sabe", "cambio de juego"]
+  },
+  "cta": {"cta_preferidos": ["pregunta abierta específica"]}
+}

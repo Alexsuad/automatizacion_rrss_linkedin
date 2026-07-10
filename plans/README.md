@@ -12,7 +12,7 @@ honor its STOP conditions, and update your row when done.
 | 002  | Saneamiento de rumbo y frontera portable de publicacion | P1 | M | 001 | DONE |
 | 003  | Salida externa dry-run sin proveedor real | P1 | M | 002 | DONE |
 | 004  | La generacion textual util se activa mediante un adaptador controlado | P1 | M | 003 | DONE |
-| 005  | Prueba de valor del flujo textual local con entrada realista | P1 | S | 004 | IN PROGRESS |
+| 005  | Prueba de valor del flujo textual local con entrada realista | P1 | S | 004 | DONE |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJECTED (with one-line rationale - finding fixed independently or approach abandoned)
 

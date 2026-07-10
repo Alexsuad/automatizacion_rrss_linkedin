@@ -14,6 +14,7 @@ honor its STOP conditions, and update your row when done.
 | 004  | La generacion textual util se activa mediante un adaptador controlado | P1 | M | 003 | DONE |
 | 005  | Prueba de valor del flujo textual local con entrada realista | P1 | S | 004 | DONE |
 | 006  | Integracion IA real controlada detrás de ModelAdapter | P1 | M | 005 | IMPLEMENTED_PENDING_REAL_SMOKE |
+| 007  | Validacion real del producto textual | P1 | M | 006 | TODO |
 
 Status values: TODO | IN PROGRESS | DONE | IMPLEMENTED_PENDING_REAL_SMOKE | BLOCKED (with one-line reason) | REJECTED (with one-line rationale - finding fixed independently or approach abandoned)
 
@@ -25,6 +26,7 @@ Status values: TODO | IN PROGRESS | DONE | IMPLEMENTED_PENDING_REAL_SMOKE | BLOC
 - `004` depende de `003` porque la generacion textual debe evolucionar sin romper la frontera de publicacion ya establecida ni reintroducir acoplamiento real.
 - `005` depende de `004` porque la prueba de valor necesita el adapter controlado ya estabilizado.
 - `006` depende de `005` porque la integración real solo tiene sentido después de validar que el flujo local útil ya aporta valor suficiente.
+- `007` depende de `006` porque la validación real del producto textual solo tiene sentido cuando la ruta real ya existe detrás de `ModelAdapter`, aunque el smoke siga pendiente.
 
 ## Findings considered and rejected
 

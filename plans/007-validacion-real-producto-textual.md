@@ -55,6 +55,8 @@ Demostrar con evidencia real y controlada que el sistema puede producir una piez
 
 - elegir explicitamente proveedor y modelo antes de cualquier llamada
 - confirmar autorizacion explicita para usar red y credencial local
+- la URL del proveedor se inyecta por entorno y no se hardcodea; para Ollama
+  desde WSL se usa `OLLAMA_API_BASE`
 - fijar un presupuesto inicial maximo de `8` llamadas:
   - `1` smoke
   - `5` benchmark

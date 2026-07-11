@@ -3,13 +3,16 @@
 Estado: `PENDIENTE_DE_AUTORIZACION_Y_CREDENCIAL`.
 
 Condiciones: instalar el extra `ai-real`, configurar localmente adapter,
-proveedor, modelo y credencial estándar del proveedor, usar solo los fixtures
-sintéticos y ejecutar una única pieza. No incluir claves en el comando.
+proveedor, modelo, `OLLAMA_API_BASE` y la credencial estándar del proveedor
+si aplica, usar solo los fixtures sintéticos y ejecutar una única pieza. No
+incluir claves en el comando.
 
 ```bash
+WINDOWS_HOST_IP=$(ip route show | awk '/default/ {print $3; exit}')
+export OLLAMA_API_BASE="http://${WINDOWS_HOST_IP}:11434"
 LINKEDIN_CONTENT_AI_ADAPTER=litellm \
-LINKEDIN_CONTENT_AI_PROVIDER=<proveedor> \
-LINKEDIN_CONTENT_AI_MODEL=<modelo> \
+LINKEDIN_CONTENT_AI_PROVIDER=ollama \
+LINKEDIN_CONTENT_AI_MODEL=ollama_chat/llama3.2:latest \
 LINKEDIN_CONTENT_AI_MAX_TOKENS=180 \
 LINKEDIN_CONTENT_AI_TIMEOUT_SECONDS=30 \
 uv run python -m linkedin_content_system.cli.flujo_textual \
@@ -18,6 +21,6 @@ uv run python -m linkedin_content_system.cli.flujo_textual \
 ```
 
 Criterio PASS: una respuesta no vacía genera solo una sesión editorial
-pendiente; no crea `LocalDraft`, no publica, no muestra secretos y termina
-dentro del timeout. Conservar solo proveedor, modelo, duración, estado y ruta
-relativa de evidencia.
+pendiente; no crea `LocalDraft`, no publica, no muestra secretos, termina
+dentro del timeout y deja evidencia relativa con proveedor, modelo, duración y
+estado. El smoke no cuenta como benchmark ni activa feedback.

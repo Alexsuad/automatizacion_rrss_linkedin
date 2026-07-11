@@ -75,6 +75,70 @@ def test_litellm_adapter_usa_max_tokens_desde_entorno(monkeypatch):
     assert fake_litellm.calls[0]["max_tokens"] == 111
 
 
+def test_litellm_adapter_usa_api_base_desde_entorno(monkeypatch):
+    fake_litellm = _FakeLiteLLM({"choices": [{"message": {"content": "Borrador real util"}}]})
+    monkeypatch.setattr(litellm_adapter_module, "litellm", fake_litellm)
+    monkeypatch.setenv("OLLAMA_API_BASE", "http://windows-host.local:11434")
+
+    adapter = LiteLLMModelAdapter(modelo="ollama_chat/llama3.2:latest", proveedor="ollama")
+    adapter.generar_texto("Prompt base")
+
+    assert fake_litellm.calls[0]["api_base"] == "http://windows-host.local:11434"
+    assert fake_litellm.calls[0]["model"] == "ollama_chat/llama3.2:latest"
+
+
+def test_litellm_adapter_usa_override_general_desde_entorno(monkeypatch):
+    fake_litellm = _FakeLiteLLM({"choices": [{"message": {"content": "Borrador real util"}}]})
+    monkeypatch.setattr(litellm_adapter_module, "litellm", fake_litellm)
+    monkeypatch.setenv("LINKEDIN_CONTENT_AI_API_BASE", "http://api-base-general.local:11434")
+    monkeypatch.setenv("OLLAMA_API_BASE", "http://ollama-local.example:11434")
+
+    adapter = LiteLLMModelAdapter(modelo="gpt-4o-mini", proveedor="openai")
+    adapter.generar_texto("Prompt base")
+
+    assert fake_litellm.calls[0]["api_base"] == "http://api-base-general.local:11434"
+
+
+def test_litellm_adapter_da_prioridad_al_api_base_explicito_sobre_entorno(monkeypatch):
+    fake_litellm = _FakeLiteLLM({"choices": [{"message": {"content": "Borrador real util"}}]})
+    monkeypatch.setattr(litellm_adapter_module, "litellm", fake_litellm)
+    monkeypatch.setenv("LINKEDIN_CONTENT_AI_API_BASE", "http://api-base-general.local:11434")
+    monkeypatch.setenv("OLLAMA_API_BASE", "http://ollama-local.example:11434")
+
+    adapter = LiteLLMModelAdapter(
+        modelo="ollama_chat/llama3.2:latest",
+        proveedor="ollama",
+        api_base="http://api-base-explicito.local:11434",
+    )
+    adapter.generar_texto("Prompt base")
+
+    assert fake_litellm.calls[0]["api_base"] == "http://api-base-explicito.local:11434"
+
+
+@pytest.mark.parametrize(
+    ("proveedor", "modelo"),
+    [
+        ("deepseek", "deepseek-chat"),
+        ("openrouter", "openrouter/deepseek/deepseek-v3"),
+        ("openai", "gpt-4o-mini"),
+    ],
+)
+def test_litellm_adapter_ignora_ollama_api_base_para_otros_proveedores(
+    proveedor,
+    modelo,
+    monkeypatch,
+):
+    fake_litellm = _FakeLiteLLM({"choices": [{"message": {"content": "Borrador real util"}}]})
+    monkeypatch.setattr(litellm_adapter_module, "litellm", fake_litellm)
+    monkeypatch.setenv("OLLAMA_API_BASE", "http://windows-host.local:11434")
+
+    adapter = LiteLLMModelAdapter(modelo=modelo, proveedor=proveedor)
+    adapter.generar_texto("Prompt base")
+
+    assert "api_base" not in fake_litellm.calls[0]
+    assert fake_litellm.calls[0]["model"] == litellm_adapter_module._resolver_modelo(modelo, proveedor)
+
+
 def test_litellm_adapter_resuelve_modelo_prefijado():
     assert litellm_adapter_module._resolver_modelo("openai/gpt-4o-mini", "openai") == "openai/gpt-4o-mini"
 
@@ -130,6 +194,27 @@ def test_litellm_adapter_rechaza_max_tokens_invalido_desde_entorno(monkeypatch):
 
     with pytest.raises(LiteLLMConfigurationError, match="max_tokens"):
         LiteLLMModelAdapter(modelo="gpt-4o-mini", proveedor="openai")
+
+
+@pytest.mark.parametrize("api_base", ["ftp://localhost:11434", "localhost:11434", "://malformed"])
+def test_litellm_adapter_rechaza_api_base_invalido(api_base):
+    with pytest.raises(LiteLLMConfigurationError, match="api_base"):
+        LiteLLMModelAdapter(modelo="gpt-4o-mini", proveedor="openai", api_base=api_base)
+
+
+@pytest.mark.parametrize(
+    ("env_var", "modelo", "proveedor"),
+    [
+        ("OLLAMA_API_BASE", "ollama_chat/llama3.2:latest", "ollama"),
+        ("LINKEDIN_CONTENT_AI_API_BASE", "gpt-4o-mini", "deepseek"),
+        ("LINKEDIN_CONTENT_AI_API_BASE", "gpt-4o-mini", "openrouter"),
+    ],
+)
+def test_litellm_adapter_rechaza_api_base_invalido_desde_entorno(env_var, modelo, proveedor, monkeypatch):
+    monkeypatch.setenv(env_var, "localhost:11434")
+
+    with pytest.raises(LiteLLMConfigurationError, match="api_base"):
+        LiteLLMModelAdapter(modelo=modelo, proveedor=proveedor)
 
 
 def test_litellm_adapter_rechaza_litellm_ausente(monkeypatch):

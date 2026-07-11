@@ -58,6 +58,8 @@ El smoke con proveedor real queda pendiente de autorización y credencial local.
 - `LINKEDIN_CONTENT_AI_ADAPTER=controlled|mock|litellm`
 - `LINKEDIN_CONTENT_AI_PROVIDER=<proveedor>`
 - `LINKEDIN_CONTENT_AI_MODEL=<modelo>`
+- `LINKEDIN_CONTENT_AI_API_BASE=<url-http-o-https-opcional>`
+- `OLLAMA_API_BASE=http://<WINDOWS_HOST_IP>:11434`
 - `LINKEDIN_CONTENT_AI_TIMEOUT_SECONDS=30`
 - `LINKEDIN_CONTENT_AI_MAX_TOKENS=280`
 - `LINKEDIN_CONTENT_PROFILE_DIR=./profiles`
@@ -71,3 +73,13 @@ uv sync --extra ai-real
 ```
 
 Las credenciales deben venir del entorno estándar del proveedor elegido y nunca se versionan en este repositorio.
+
+Para Ollama en Windows accesible desde WSL, una configuración local típica es:
+
+```bash
+WINDOWS_HOST_IP=$(ip route show | awk '/default/ {print $3; exit}')
+export OLLAMA_API_BASE="http://${WINDOWS_HOST_IP}:11434"
+export LINKEDIN_CONTENT_AI_ADAPTER=litellm
+export LINKEDIN_CONTENT_AI_PROVIDER=ollama
+export LINKEDIN_CONTENT_AI_MODEL=ollama_chat/llama3.2:latest
+```

@@ -71,6 +71,32 @@ def test_construir_model_adapter_puede_ir_a_litellm(monkeypatch):
     assert adapter.generar_texto("Prompt base") == "respuesta real simulada"
 
 
+def test_construir_model_adapter_puede_leer_api_base_para_ollama(monkeypatch):
+    monkeypatch.setenv("LINKEDIN_CONTENT_AI_ADAPTER", "litellm")
+    monkeypatch.setenv("LINKEDIN_CONTENT_AI_MODEL", "ollama_chat/llama3.2:latest")
+    monkeypatch.setenv("LINKEDIN_CONTENT_AI_PROVIDER", "ollama")
+    monkeypatch.setenv("OLLAMA_API_BASE", "http://windows-host.local:11434")
+
+    from linkedin_content_system.ai import litellm_adapter as litellm_adapter_module
+
+    class _FakeLiteLLM:
+        def __init__(self):
+            self.calls = []
+
+        def completion(self, **kwargs):
+            self.calls.append(kwargs)
+            return {"choices": [{"message": {"content": "respuesta local"}}]}
+
+    fake_litellm = _FakeLiteLLM()
+    monkeypatch.setattr(litellm_adapter_module, "litellm", fake_litellm)
+
+    adapter = construir_model_adapter()
+
+    assert isinstance(adapter, LiteLLMModelAdapter)
+    assert adapter.generar_texto("Prompt base") == "respuesta local"
+    assert fake_litellm.calls[0]["api_base"] == "http://windows-host.local:11434"
+
+
 def test_construir_model_adapter_rechaza_modo_desconocido(monkeypatch):
     monkeypatch.setenv("LINKEDIN_CONTENT_AI_ADAPTER", "desconocido")
 

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib
 import os
+from urllib.parse import urlparse
 from typing import Any, Optional
 
 from linkedin_content_system.ai.ports import ModelAdapter
@@ -32,6 +33,51 @@ def _resolver_modelo(modelo: str, proveedor: Optional[str]) -> str:
     if proveedor and "/" not in modelo:
         return f"{proveedor}/{modelo}"
     return modelo
+
+
+def _es_ollama(proveedor: Optional[str], modelo: Optional[str]) -> bool:
+    proveedor_normalizado = (proveedor or "").strip().lower()
+    modelo_normalizado = (modelo or "").strip().lower()
+    return (
+        proveedor_normalizado == "ollama"
+        or modelo_normalizado.startswith("ollama_")
+        or modelo_normalizado.startswith("ollama/")
+    )
+
+
+def _validar_api_base(raw_api_base: Optional[str]) -> Optional[str]:
+    if raw_api_base is None:
+        return None
+
+    api_base_resuelta = str(raw_api_base).strip()
+    if not api_base_resuelta:
+        return None
+
+    parsed = urlparse(api_base_resuelta)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        raise LiteLLMConfigurationError(
+            "El api_base del adaptador real debe ser una URL http o https valida."
+        )
+
+    return api_base_resuelta
+
+
+def _resolver_api_base(
+    api_base: Optional[str],
+    proveedor: Optional[str],
+    modelo: Optional[str],
+) -> Optional[str]:
+    if api_base is not None:
+        return _validar_api_base(api_base)
+
+    api_base_general = os.getenv("LINKEDIN_CONTENT_AI_API_BASE")
+    if api_base_general:
+        return _validar_api_base(api_base_general)
+
+    if _es_ollama(proveedor, modelo):
+        return _validar_api_base(os.getenv("OLLAMA_API_BASE"))
+
+    return None
 
 
 def _parsear_timeout(timeout_seconds: Optional[float]) -> float:
@@ -151,11 +197,13 @@ class LiteLLMModelAdapter(ModelAdapter):
         self,
         modelo: Optional[str] = None,
         proveedor: Optional[str] = None,
+        api_base: Optional[str] = None,
         timeout_seconds: Optional[float] = None,
         max_tokens: Optional[int] = None,
     ) -> None:
         self.modelo = (modelo or os.getenv("LINKEDIN_CONTENT_AI_MODEL") or "").strip()
         self.proveedor = (proveedor or os.getenv("LINKEDIN_CONTENT_AI_PROVIDER") or "").strip() or None
+        self.api_base = _resolver_api_base(api_base, self.proveedor, self.modelo)
         self.timeout_seconds = _parsear_timeout(timeout_seconds)
         self.max_tokens = _parsear_max_tokens(max_tokens)
 
@@ -184,13 +232,17 @@ class LiteLLMModelAdapter(ModelAdapter):
         messages.append({"role": "user", "content": prompt.strip()})
 
         try:
-            respuesta = client.completion(
-                model=_resolver_modelo(self.modelo, self.proveedor),
-                messages=messages,
-                timeout=self.timeout_seconds,
-                temperature=0.2,
-                max_tokens=self.max_tokens,
-            )
+            kwargs = {
+                "model": _resolver_modelo(self.modelo, self.proveedor),
+                "messages": messages,
+                "timeout": self.timeout_seconds,
+                "temperature": 0.2,
+                "max_tokens": self.max_tokens,
+            }
+            if self.api_base is not None:
+                kwargs["api_base"] = self.api_base
+
+            respuesta = client.completion(**kwargs)
         except Exception as exc:  # pragma: no cover - tests stubbean el proveedor
             if _es_error_de_configuracion(exc, client):
                 raise LiteLLMConfigurationError(

@@ -221,7 +221,7 @@ class LiteLLMModelAdapter(ModelAdapter):
             raise LiteLLMConfigurationError("El prompt no puede estar vacío.")
 
         client = _resolver_litellm()
-        if client is None:
+        if client is None or not callable(getattr(client, "completion", None)):
             raise LiteLLMConfigurationError(
                 "La dependencia litellm no está disponible. Instala la dependencia para usar el modo real."
             )

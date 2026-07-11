@@ -14,8 +14,8 @@ LINKEDIN_CONTENT_AI_ADAPTER=litellm \
 LINKEDIN_CONTENT_AI_PROVIDER=ollama \
 LINKEDIN_CONTENT_AI_MODEL=ollama_chat/llama3.2:latest \
 LINKEDIN_CONTENT_AI_MAX_TOKENS=180 \
-LINKEDIN_CONTENT_AI_TIMEOUT_SECONDS=30 \
-uv run python -m linkedin_content_system.cli.flujo_textual \
+LINKEDIN_CONTENT_AI_TIMEOUT_SECONDS=120 \
+uv run --extra ai-real python -m linkedin_content_system.cli.flujo_textual \
   --input-json benchmarks/editorial/smoke_input.json \
   --output-dir output/smoke_real
 ```

@@ -225,6 +225,14 @@ def test_litellm_adapter_rechaza_litellm_ausente(monkeypatch):
         adapter.generar_texto("Prompt base")
 
 
+def test_litellm_adapter_rechaza_instalacion_incompleta_de_litellm(monkeypatch):
+    monkeypatch.setattr(litellm_adapter_module, "litellm", SimpleNamespace())
+    adapter = LiteLLMModelAdapter(modelo="ollama_chat/llama3.2:latest", proveedor="ollama")
+
+    with pytest.raises(LiteLLMConfigurationError, match="dependencia litellm no est"):
+        adapter.generar_texto("Prompt base")
+
+
 def test_litellm_adapter_traduce_error_de_autenticacion(monkeypatch):
     fake_litellm = _FakeLiteLLM(error=RuntimeError("authentication failed for token SENSITIVE_VALUE"))
     monkeypatch.setattr(litellm_adapter_module, "litellm", fake_litellm)

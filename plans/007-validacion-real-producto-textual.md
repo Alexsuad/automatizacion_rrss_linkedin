@@ -182,6 +182,9 @@ Tomar una decision basada en evidencia:
 - numero total de llamadas realizadas
 - consumo o coste cuando el proveedor lo exponga
 - hashes de fixtures y hashes de salida
+- evidencia saneada en la sesión con adapter, timeout, límite de tokens y duración
+- estado estructural separado del estado de revisión editorial
+- un `PASS` estructural no equivale a voz, hook, autenticidad o CTA aprobados; esas dimensiones quedan en `WARN` hasta revisión humana o evaluación explícita autorizada
 - estado del smoke
 - resultados del benchmark
 - revision humana identificable

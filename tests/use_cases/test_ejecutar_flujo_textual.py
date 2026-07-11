@@ -13,8 +13,10 @@ from linkedin_content_system.contracts import (
     IntencionEditorial,
     PerfilNarrativoReferencia,
     TipoEntrada,
+    TipoAprobacion,
 )
 from linkedin_content_system.use_cases import ejecutar_flujo_textual
+from linkedin_content_system.use_cases.ejecutar_flujo_textual import generar_candidato_textual
 from linkedin_content_system.use_cases.flujo_textual_runtime import (
     PerfilNarrativoRuntime,
     SolicitudGeneracionTextual,
@@ -46,6 +48,9 @@ def aprobacion_aprobada():
         estado=EstadoAprobacion.APROBADO,
         aprobado_por="Alex Revisor",
         fecha_aprobacion="2026-07-08T12:00:00Z",
+        tipo_aprobacion=TipoAprobacion.REFORZADA,
+        revision_reforzada_requerida=True,
+        motivo_revision_reforzada="La evaluación editorial automática requiere revisión humana explícita.",
     )
 
 
@@ -161,6 +166,8 @@ def test_ejecutar_flujo_textual_compone_prompt_con_senales_derivadas(tmp_path, e
     assert entrada_valida.intencion_editorial.idea_central in adapter.prompt_recibido
     assert "Intención identificada como compartir_aprendizaje" in adapter.prompt_recibido
     assert "Tono base:" in adapter.system_instruction_recibida
+    assert "Devuelve exclusivamente el post candidato" in adapter.prompt_recibido
+    assert "No incluyas análisis" in adapter.prompt_recibido
 
 
 def test_ejecutar_flujo_textual_bloquea_entrada_insegura_antes_del_adapter(
@@ -191,6 +198,49 @@ def test_ejecutar_flujo_textual_bloquea_entrada_insegura_antes_del_adapter(
 
     assert adapter.invocado is False
     assert not (tmp_path / "localdraft_in_texto_001").exists()
+
+
+@pytest.mark.parametrize(
+    ("salida", "motivo"),
+    [
+        ("Post útil.\n\nRevisión inicial:\nFalta más voz.", "metatexto editorial"),
+        ("Un post que termina a mitad de una pala", "termina con un cierre"),
+    ],
+)
+def test_generar_candidato_rechaza_salida_contaminada_o_truncada(
+    entrada_valida,
+    salida,
+    motivo,
+):
+    class AdapterDefectuoso(ModelAdapter):
+        def generar_texto(self, prompt: str, system_instruction: str = None) -> str:
+            return salida
+
+    with pytest.raises(ValueError, match=motivo):
+        generar_candidato_textual(entrada_valida, AdapterDefectuoso())
+
+
+def test_post_real_generico_queda_en_warn_editorial_aunque_pase_estructura(entrada_valida):
+    class AdapterConSalidaReal:
+        def generar_texto(self, prompt: str, system_instruction: str = None) -> str:
+            return (
+                "En un mundo donde la productividad es clave para el éxito, hay una forma "
+                "sencilla de liberar tiempo sin sacrificar la calidad: automatizar tareas repetitivas.\n\n"
+                "Automatizar lo repetitivo sin sustituir el criterio humano es fundamental para "
+                "mantener la precisión y la eficiencia en nuestras operaciones. Sin embargo, "
+                "muchos nos preguntamos: ¿qué decisión mantendrías bajo revisión humana?"
+            )
+
+    _, diagnostico, _ = generar_candidato_textual(entrada_valida, AdapterConSalidaReal())
+
+    assert diagnostico.compliance.value == "PASS"
+    assert diagnostico.estado_revision.value == "WARN"
+    assert diagnostico.hook.value == "WARN"
+    assert diagnostico.voz_cliente.value == "WARN"
+    assert diagnostico.autenticidad.value == "WARN"
+    assert diagnostico.cta.value == "WARN"
+    assert diagnostico.riesgo_generico.value == "medio"
+    assert "revisión humana" in diagnostico.motivo
 
 
 def test_ejecutar_flujo_textual_admite_strategy_inyectado_para_otro_canal(

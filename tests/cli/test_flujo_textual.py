@@ -91,6 +91,10 @@ def test_cli_aprobado_genera_localdraft(tmp_path):
             "Alex Revisor",
             "--fecha-aprobacion",
             "2026-07-08T12:30:00Z",
+            "--tipo-aprobacion",
+            "reforzada",
+            "--motivo-revision-reforzada",
+            "La evaluación editorial automática requiere revisión humana explícita.",
         ],
         capture_output=True,
         text=True,
@@ -176,6 +180,10 @@ def test_cli_aprobado_con_entrada_realista_genera_localdraft_util(tmp_path):
             "QA Local",
             "--fecha-aprobacion",
             "2026-07-10T10:00:00Z",
+            "--tipo-aprobacion",
+            "reforzada",
+            "--motivo-revision-reforzada",
+            "La evaluación editorial automática requiere revisión humana explícita.",
         ],
         capture_output=True,
         text=True,
@@ -309,9 +317,60 @@ def test_cli_texto_genera_borrador_pendiente_sin_aprobacion(tmp_path):
     assert "pendiente de revisión" in result.stdout.lower()
     assert "intención:" in result.stdout.lower()
     assert "perfil:" in result.stdout.lower()
-    assert "diagnóstico estructural:" in result.stdout.lower()
+    assert "validación técnica:" in result.stdout.lower()
+    assert "validación estructural:" in result.stdout.lower()
+    assert "evaluación editorial automática:" in result.stdout.lower()
+    assert "decisión humana:" in result.stdout.lower()
     assert (tmp_path / "editorial_in_cli_texto_001" / "versiones" / "v001.md").exists()
     assert not (tmp_path / "localdraft_in_cli_texto_001").exists()
+
+
+def test_cli_persiste_evidencia_operativa_saneada_en_sesion(tmp_path, monkeypatch):
+    from linkedin_content_system.cli import flujo_textual as cli_module
+
+    input_path = tmp_path / "entrada.json"
+    input_path.write_text(json.dumps(_entrada_json(), ensure_ascii=False), encoding="utf-8")
+    profile_dir = tmp_path / "profiles"
+    profile_dir.mkdir()
+    (profile_dir / "perfil_cli.json").write_text(
+        json.dumps(
+            {
+                "id_perfil": "perfil_cli",
+                "voz_marca": {
+                    "tono_base": {"descripcion": "Claro y práctico"},
+                    "tono_prohibido": {"descripcion": "Promocional"},
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    class AdapterConMetadatos:
+        proveedor = "ollama"
+        modelo = "ollama_chat/modelo-sintetico"
+        timeout_seconds = 120.0
+        max_tokens = 180
+
+        def generar_texto(self, prompt, system_instruction=None):
+            return "Automatizar tareas repetitivas libera tiempo para aplicar criterio humano. ¿Qué decisión conservarías?"
+
+    monkeypatch.setenv("LINKEDIN_CONTENT_AI_ADAPTER", "litellm")
+    monkeypatch.setenv("LINKEDIN_CONTENT_PROFILE_DIR", str(profile_dir))
+    monkeypatch.setattr(cli_module, "construir_model_adapter", AdapterConMetadatos)
+
+    assert cli_module.main(["--input-json", str(input_path), "--output-dir", str(tmp_path)]) == 0
+
+    sesion = json.loads((tmp_path / "editorial_in_cli_001" / "sesion.json").read_text(encoding="utf-8"))
+    evidencia = sesion["evidencia_ejecucion"]
+    assert evidencia["proveedor"] == "ollama"
+    assert evidencia["modelo"] == "ollama_chat/modelo-sintetico"
+    assert evidencia["duracion_ms"] >= 0
+    assert evidencia["estado_tecnico"] == "PASS"
+    assert evidencia["estado_sesion"] == "pendiente_revision"
+    assert evidencia["estado_revision_automatica"] == "WARN"
+    assert evidencia["decision_humana"] == "PENDIENTE"
+    assert evidencia["sin_publicacion"] is True
+    assert evidencia["sin_localdraft"] is True
 
 
 def test_cli_ciclo_completo_ajusta_aprueba_y_prepara(tmp_path):

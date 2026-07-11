@@ -1,7 +1,10 @@
 import argparse
+import hashlib
 import json
 import os
+import subprocess
 import sys
+import time
 from datetime import datetime, timezone
 
 from pydantic import ValidationError
@@ -125,6 +128,47 @@ def _entrada_desde_texto(args: argparse.Namespace) -> EntradaContenido:
     )
 
 
+def _sha256_file(path: str | None) -> str | None:
+    if not path:
+        return None
+    file_path = os.fspath(path)
+    if not os.path.isfile(file_path):
+        return None
+    return hashlib.sha256(open(file_path, "rb").read()).hexdigest()
+
+
+def _commit_actual() -> str | None:
+    try:
+        return subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
+    except (OSError, subprocess.CalledProcessError):
+        return None
+
+
+def _evidencia_ejecucion_inicial(args: argparse.Namespace, entrada, adapter) -> dict[str, object]:
+    profile_dir = os.getenv("LINKEDIN_CONTENT_PROFILE_DIR")
+    profile_path = (
+        os.path.join(profile_dir, f"{entrada.perfil_narrativo.id_perfil}.json")
+        if profile_dir
+        else None
+    )
+    evidencia = {
+        "adapter": os.getenv("LINKEDIN_CONTENT_AI_ADAPTER", "controlado"),
+        "proveedor": getattr(adapter, "proveedor", None),
+        "modelo": getattr(adapter, "modelo", None),
+        "timeout_seconds": getattr(adapter, "timeout_seconds", None),
+        "max_tokens": getattr(adapter, "max_tokens", None),
+        "commit": _commit_actual(),
+        "fixture_sha256": _sha256_file(args.input_json),
+        "perfil_sha256": _sha256_file(profile_path),
+    }
+    return {clave: valor for clave, valor in evidencia.items() if valor is not None}
+
+
 def _mostrar_sesion(sesion) -> None:
     version = next(item for item in sesion.versiones if item.numero == sesion.version_actual)
     print(f"Entrada: {sesion.id_entrada}")
@@ -139,7 +183,12 @@ def _mostrar_sesion(sesion) -> None:
     )
     print(f"Intención: {intencion}")
     print(f"Perfil: {sesion.entrada.perfil_narrativo.id_perfil}")
-    print(f"Diagnóstico estructural: {version.diagnostico_editorial.estado_revision.value}")
+    estado_tecnico = (sesion.evidencia_ejecucion or {}).get("estado_tecnico", "NO_REGISTRADO")
+    decision_humana = sesion.aprobacion.estado.value if sesion.aprobacion else "pendiente"
+    print(f"Validación técnica: {estado_tecnico}")
+    print(f"Validación estructural: {version.diagnostico_editorial.compliance.value}")
+    print(f"Evaluación editorial automática: {version.diagnostico_editorial.estado_revision.value}")
+    print(f"Decisión humana: {decision_humana}")
     estados_legibles = {
         "pendiente_revision": "pendiente de revisión",
         "requiere_ajustes": "requiere ajustes",
@@ -185,13 +234,35 @@ def main(argv: list[str] | None = None) -> int:
             if not args.input_json and not args.texto:
                 raise ValueError("Debes indicar --input-json o --texto para generar.")
             entrada = _leer_entrada(args.input_json) if args.input_json else _entrada_desde_texto(args)
+            adapter = construir_model_adapter()
+            evidencia_ejecucion = _evidencia_ejecucion_inicial(args, entrada, adapter)
+            inicio = time.monotonic()
             sesion = generar_borrador_pendiente(
                 entrada=entrada,
-                adapter=construir_model_adapter(),
+                adapter=adapter,
                 store=store,
                 profile_resolver=profile_resolver,
                 channel_strategy=channel_strategy,
+                evidencia_ejecucion=evidencia_ejecucion,
             )
+            version = sesion.versiones[-1]
+            evidencia_ejecucion.update(
+                {
+                    "duracion_ms": round((time.monotonic() - inicio) * 1000),
+                    "exit_code": 0,
+                    "estado_tecnico": "PASS",
+                    "estado_estructural": version.diagnostico_editorial.compliance.value,
+                    "estado_editorial": version.diagnostico_editorial.estado_revision.value,
+                    "estado_revision_automatica": version.diagnostico_editorial.estado_revision.value,
+                    "estado_sesion": sesion.estado.value,
+                    "decision_humana": "PENDIENTE",
+                    "salida_sha256": hashlib.sha256(version.texto.encode("utf-8")).hexdigest(),
+                    "sin_publicacion": True,
+                    "sin_localdraft": True,
+                }
+            )
+            sesion.evidencia_ejecucion = evidencia_ejecucion
+            store.save(sesion)
             _mostrar_sesion(sesion)
             return 0
 

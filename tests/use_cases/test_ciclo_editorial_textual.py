@@ -11,6 +11,7 @@ from linkedin_content_system.contracts import (
     IntencionEditorial,
     PerfilNarrativoReferencia,
     TipoEntrada,
+    TipoAprobacion,
     EstadoRevision,
 )
 from linkedin_content_system.publishers import LocalDraftPublisher
@@ -63,6 +64,42 @@ def test_generar_crea_version_pendiente_sin_localdraft(tmp_path, entrada_editori
     assert not (tmp_path / "localdraft_in_ciclo_001").exists()
 
 
+def test_generar_persiste_evidencia_operativa_saneada(tmp_path, entrada_editorial):
+    store = FilesystemEditorialSessionStore(tmp_path)
+    evidencia = {
+        "adapter": "litellm",
+        "proveedor": "ollama",
+        "modelo": "ollama_chat/modelo-sintetico",
+        "duracion_ms": 123,
+        "commit": "abc123",
+        "fixture_sha256": "a" * 64,
+        "perfil_sha256": "b" * 64,
+    }
+
+    generar_borrador_pendiente(
+        entrada=entrada_editorial,
+        adapter=ControlledModelAdapter(),
+        store=store,
+        evidencia_ejecucion=evidencia,
+    )
+
+    sesion = store.load(entrada_editorial.id_entrada)
+    assert sesion.evidencia_ejecucion == evidencia
+
+
+def test_salida_contaminada_no_crea_sesion_ni_version(tmp_path, entrada_editorial):
+    class AdapterContaminado:
+        def generar_texto(self, prompt, system_instruction=None):
+            return "Post candidato.\nRevisión inicial: falta más voz."
+
+    store = FilesystemEditorialSessionStore(tmp_path)
+
+    with pytest.raises(ValueError, match="metatexto editorial"):
+        generar_borrador_pendiente(entrada_editorial, AdapterContaminado(), store)
+
+    assert not list(tmp_path.glob("editorial_*"))
+
+
 def test_feedback_crea_nueva_version_trazable(tmp_path, entrada_editorial):
     store = FilesystemEditorialSessionStore(tmp_path)
     generar_borrador_pendiente(entrada_editorial, ControlledModelAdapter(), store)
@@ -97,6 +134,8 @@ def test_solo_version_aprobada_puede_prepararse(tmp_path, entrada_editorial):
         aprobado_por="Revisor Sintetico",
         fecha_aprobacion="2026-07-10T14:30:00Z",
         store=store,
+        tipo_aprobacion=TipoAprobacion.REFORZADA,
+        motivo_revision_reforzada="La pieza requiere revisión humana explícita.",
     )
     manifest = preparar_salida_aprobada(entrada_editorial.id_entrada, store, publisher)
 
@@ -170,6 +209,8 @@ def test_preparado_no_admite_ajustes_ni_rechazo(tmp_path, entrada_editorial):
         "Revisor Sintetico",
         "2026-07-11T10:00:00Z",
         store,
+        tipo_aprobacion=TipoAprobacion.REFORZADA,
+        motivo_revision_reforzada="La pieza requiere revisión humana explícita.",
     )
     preparar_salida_aprobada(
         entrada_editorial.id_entrada,

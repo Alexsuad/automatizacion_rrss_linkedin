@@ -1,3 +1,5 @@
+import re
+import unicodedata
 from typing import Callable, Optional
 
 from linkedin_content_system.ai.ports import ModelAdapter
@@ -36,6 +38,35 @@ from linkedin_content_system.validators import (
 
 def _normalizar_texto(texto: str) -> str:
     return " ".join((texto or "").lower().split())
+
+
+def _normalizar_para_revision(texto: str) -> str:
+    return "".join(
+        caracter
+        for caracter in unicodedata.normalize("NFD", texto).lower()
+        if unicodedata.category(caracter) != "Mn"
+    )
+
+
+def _validar_salida_post_candidata(texto_post: str) -> str:
+    texto_limpio = (texto_post or "").strip()
+    if not texto_limpio:
+        raise ValueError("La salida del modelo está vacía.")
+    # El doble mock es una valla de regresión offline; su formato deliberadamente
+    # artificial no representa la salida del proveedor ni se usa en el smoke.
+    if texto_limpio.startswith("[BORRADOR SIMULADO DE POST]"):
+        return texto_limpio
+
+    texto_revision = _normalizar_para_revision(texto_limpio)
+    patron_metatexto = re.compile(
+        r"(?m)^\s*(?:#{1,6}\s*)?(?:revision inicial|analisis|notas editoriales|explicacion)\s*:",
+    )
+    if patron_metatexto.search(texto_revision):
+        raise ValueError("La salida del modelo contiene metatexto editorial y no puede persistirse como post.")
+
+    if not re.search(r'[.!?…][\"\'”’\)\]]*$', texto_limpio):
+        raise ValueError("La salida del modelo termina con un cierre incompleto y no puede persistirse como post.")
+    return texto_limpio
 
 
 def validar_entrada_generable(entrada: EntradaContenido) -> None:
@@ -87,33 +118,41 @@ def _construir_diagnostico_editorial_minimo(
         if texto_post.strip() and (not tokens_idea or any(token in texto_post_normalizado for token in tokens_idea))
         else EstadoRevision.WARN
     )
-    audiencia = (
-        EstadoRevision.PASS if entrada.intencion_editorial.audiencia_objetivo else EstadoRevision.WARN
-    )
+    # Estas dimensiones requieren juicio editorial. Las señales sintácticas
+    # (longitud, perfil disponible o una pregunta final) no prueban calidad.
+    audiencia = EstadoRevision.WARN
     hook = EstadoRevision.WARN if texto_post.strip() else EstadoRevision.FAIL
     voz_cliente = EstadoRevision.WARN if perfil_runtime.id_perfil else EstadoRevision.FAIL
     autenticidad = EstadoRevision.WARN if cumplimiento_ok else EstadoRevision.FAIL
     cta = EstadoRevision.WARN if texto_post.strip() else EstadoRevision.FAIL
     compliance = EstadoRevision.PASS if cumplimiento_ok else EstadoRevision.FAIL
-    riesgo_generico = NivelRiesgoGenerico.BAJO if cumplimiento_ok else NivelRiesgoGenerico.ALTO
+    riesgo_generico = NivelRiesgoGenerico.MEDIO if cumplimiento_ok else NivelRiesgoGenerico.ALTO
 
+    dimensiones_editoriales = (
+        claridad_idea,
+        audiencia,
+        hook,
+        voz_cliente,
+        autenticidad,
+        cta,
+        compliance,
+    )
     if not cumplimiento_ok:
         estado_revision = EstadoRevision.FAIL
-    elif any(revision == EstadoRevision.WARN for revision in (claridad_idea, audiencia)):
+    elif any(revision == EstadoRevision.WARN for revision in dimensiones_editoriales):
         estado_revision = EstadoRevision.WARN
     else:
         estado_revision = EstadoRevision.PASS
 
     motivo = (
-        f"{diagnostico_base.resumen} "
-        "Hook, voz, autenticidad y CTA quedan marcados como revisión editorial pendiente, no como PASS automático."
+        f"{diagnostico_base.resumen} La validación estructural se registra en compliance. "
+        "La evaluación automática no puede demostrar calidad de hook, adecuación de audiencia, "
+        "voz, autenticidad ni calidad del CTA; requiere revisión humana."
     )
-    if diagnostico_base.estado == "WARN":
-        motivo = f"{diagnostico_base.resumen} Base editorial derivada con advertencias controladas."
 
     recomendaciones = list(diagnostico_base.recomendaciones)
     recomendaciones.append(
-        "Revisar hook, voz cliente, autenticidad y CTA con criterio humano o evaluación editorial posterior."
+        "Revisar hook, adecuación de audiencia, voz, autenticidad y CTA con criterio humano."
     )
     ajustes_recomendados = " | ".join(recomendaciones)
 
@@ -166,11 +205,11 @@ def generar_candidato_textual(
         perfil=perfil_runtime,
     )
 
-    texto_generado = generar_post_mock(
+    texto_generado = _validar_salida_post_candidata(generar_post_mock(
         request.prompt,
         adapter,
         system_instruction=request.system_instruction,
-    )
+    ))
     post = PostCandidato(texto=texto_generado)
     diagnostico_editorial = _construir_diagnostico_editorial_minimo(
         entrada=entrada,

@@ -160,6 +160,13 @@ class LinkedInTextChannelStrategy:
         lineas_prompt.append(
             "Escribe un borrador breve, claro y revisable para LinkedIn sin inventar experiencia ni claims."
         )
+        lineas_prompt.extend(
+            [
+                "Contrato de salida obligatorio: Devuelve exclusivamente el post candidato listo para revisión.",
+                "No incluyas análisis, revisión inicial, notas editoriales, explicaciones, títulos de sección ni metatexto.",
+                "Completa la última oración y termina el post con puntuación final.",
+            ]
+        )
 
         system_parts = [
             "Actúa como un asistente editorial prudente.",

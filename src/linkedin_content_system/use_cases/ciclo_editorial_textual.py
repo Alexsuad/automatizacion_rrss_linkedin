@@ -152,6 +152,7 @@ def generar_borrador_pendiente(
     profile_resolver: NarrativeProfileResolver | None = None,
     channel_strategy: TextChannelStrategy | None = None,
     clock: Callable[[], str] | None = None,
+    evidencia_ejecucion: dict[str, object] | None = None,
 ) -> SesionEditorial:
     post, diagnostico, idea = generar_candidato_textual(
         entrada, adapter, profile_resolver, channel_strategy
@@ -177,6 +178,7 @@ def generar_borrador_pendiente(
                 motivo="Borrador inicial generado.",
             )
         ],
+        evidencia_ejecucion=evidencia_ejecucion,
     )
     store.create(sesion)
     return sesion

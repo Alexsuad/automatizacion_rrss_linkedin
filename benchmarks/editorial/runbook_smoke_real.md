@@ -15,12 +15,16 @@ LINKEDIN_CONTENT_AI_PROVIDER=ollama \
 LINKEDIN_CONTENT_AI_MODEL=ollama_chat/llama3.2:latest \
 LINKEDIN_CONTENT_AI_MAX_TOKENS=180 \
 LINKEDIN_CONTENT_AI_TIMEOUT_SECONDS=120 \
+LINKEDIN_CONTENT_PROFILE_DIR=benchmarks/editorial/profiles \
 uv run --extra ai-real python -m linkedin_content_system.cli.flujo_textual \
   --input-json benchmarks/editorial/smoke_input.json \
   --output-dir output/smoke_real
 ```
 
-Criterio PASS: una respuesta no vacía genera solo una sesión editorial
-pendiente; no crea `LocalDraft`, no publica, no muestra secretos, termina
-dentro del timeout y deja evidencia relativa con proveedor, modelo, duración y
-estado. El smoke no cuenta como benchmark ni activa feedback.
+Criterio PASS: una respuesta no vacía, completa y sin metatexto genera solo una
+sesión editorial pendiente; no crea `LocalDraft`, no publica, no muestra
+secretos y termina dentro del timeout. `sesion.json` debe conservar evidencia
+saneada del adapter, proveedor, modelo, timeout, límite de tokens, duración,
+commit, hashes de fixture, perfil y salida, estado técnico, estado estructural,
+estado editorial y ausencia de publicación y `LocalDraft`. El smoke no cuenta
+como benchmark ni activa feedback.

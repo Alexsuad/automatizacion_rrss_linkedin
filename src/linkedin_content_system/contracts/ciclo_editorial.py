@@ -1,4 +1,5 @@
 from enum import Enum
+from typing import Any
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -42,6 +43,7 @@ class SesionEditorial(BaseModel):
     aprobacion: AprobacionHumana | None = None
     version_aprobada: int | None = None
     historial_estados: list[TransicionEstadoEditorial] = Field(default_factory=list)
+    evidencia_ejecucion: dict[str, Any] | None = None
 
     @model_validator(mode="after")
     def validar_version_actual(self):

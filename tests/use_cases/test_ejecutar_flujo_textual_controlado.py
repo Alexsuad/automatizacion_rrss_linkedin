@@ -9,6 +9,7 @@ from linkedin_content_system.contracts import (
     IntencionEditorial,
     PerfilNarrativoReferencia,
     TipoEntrada,
+    TipoAprobacion,
 )
 from linkedin_content_system.ai import ControlledModelAdapter
 from linkedin_content_system.use_cases import ejecutar_flujo_textual
@@ -39,6 +40,9 @@ def aprobacion_aprobada():
         estado=EstadoAprobacion.APROBADO,
         aprobado_por="Alex Revisor",
         fecha_aprobacion="2026-07-08T12:00:00Z",
+        tipo_aprobacion=TipoAprobacion.REFORZADA,
+        revision_reforzada_requerida=True,
+        motivo_revision_reforzada="La evaluación editorial automática requiere revisión humana explícita.",
     )
 
 

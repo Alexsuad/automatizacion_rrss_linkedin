@@ -4,6 +4,8 @@ import pytest
 
 from linkedin_content_system.use_cases.flujo_textual_runtime import (
     FilesystemNarrativeProfileResolver,
+    LinkedInTextChannelStrategy,
+    PerfilNarrativoRuntime,
 )
 
 
@@ -79,3 +81,38 @@ def test_filesystem_profile_resolver_rechaza_id_vacio(tmp_path):
 
     with pytest.raises(ValueError, match="id_perfil no puede estar vacío"):
         resolver.resolve("   ")
+
+
+def test_linkedin_strategy_exige_solo_post_candidato_sin_metatexto():
+    from linkedin_content_system.contracts import (
+        EntradaContenido,
+        EstadoIntencionEditorial,
+        EstadoPrivacidad,
+        IntencionEditorial,
+        PerfilNarrativoReferencia,
+        TipoEntrada,
+    )
+
+    entrada = EntradaContenido(
+        id_entrada="in_prompt_001",
+        tipo_entrada=TipoEntrada.TEXTO_MANUAL,
+        texto_base="Una idea sencilla requiere criterio humano.",
+        intencion_editorial=IntencionEditorial(
+            estado_intencion_editorial=EstadoIntencionEditorial.COMPLETA,
+            idea_central="El criterio humano sigue siendo necesario.",
+        ),
+        perfil_narrativo=PerfilNarrativoReferencia(id_perfil="perfil_prompt"),
+        canales_destino=["linkedin"],
+        estado_privacidad=EstadoPrivacidad(sanitizado=True),
+        restricciones={},
+    )
+
+    solicitud = LinkedInTextChannelStrategy().build_request(
+        entrada,
+        "El criterio humano sigue siendo necesario.",
+        "Intención identificada como compartir_aprendizaje.",
+        PerfilNarrativoRuntime("perfil_prompt", "Claro", "Grandilocuente"),
+    )
+
+    assert "Devuelve exclusivamente el post candidato" in solicitud.prompt
+    assert "No incluyas análisis" in solicitud.prompt

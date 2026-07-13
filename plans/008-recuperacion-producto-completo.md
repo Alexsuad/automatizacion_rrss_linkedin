@@ -22,7 +22,7 @@
 - **Depende de**: evidencia de planes 006 y 007
 - **Categoría**: direction
 - **Planned at**: commit `bb581db`, 2026-07-12
-- **Estado actual**: INCREMENTO_1_DONE_PENDING_COMMIT
+- **Estado actual**: INCREMENTO_1_DONE
 
 ## Producto objetivo y límites
 
@@ -176,7 +176,8 @@ vista cliente y administrativa; la aprobación reforzada puede preparar
 offline: documento sintético -> sesión pendiente -> aprobación humana ->
 external dry-run, sin red ni `LocalDraft`. El auditor separado persiste
 hallazgos y feedback estructurado; el ciclo selecciona explícitamente la mejor
-versión o exige atención tras dos regeneraciones. Incremento 1 queda `DONE`.
+versión o exige atención tras dos regeneraciones. La corrección de cierre quedó
+congelada en `f9ea71f` y el Incremento 1 queda `DONE`.
 
 ### Incremento 2 — Audio local a candidata revisable
 

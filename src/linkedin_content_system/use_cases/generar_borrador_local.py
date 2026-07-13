@@ -14,6 +14,7 @@ def generar_borrador_local_desde_simulacion(
     clock: Optional[Callable[[], str]] = None,
     diagnostico_trazabilidad=None,
     publisher: PublicationPublisherPort | None = None,
+    trazabilidad_editorial: dict | None = None,
 ) -> ManifestEvidencia:
     # 1. Ejecutar flujo local simulado en memoria (aplica validaciones de post y aprobación)
     salida, _ = ensamblar_flujo_local_simulado(
@@ -23,6 +24,7 @@ def generar_borrador_local_desde_simulacion(
         aprobacion,
         diagnostico_trazabilidad=diagnostico_trazabilidad,
     )
+    salida.trazabilidad_editorial = trazabilidad_editorial
 
     # 2. Resolver publicador desde la composición; si no llega, mantener compatibilidad.
     publisher_resuelto = publisher

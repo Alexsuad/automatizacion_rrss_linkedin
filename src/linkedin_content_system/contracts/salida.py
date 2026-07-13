@@ -1,5 +1,6 @@
 from enum import Enum
 from typing import Optional
+from typing import Any
 
 from pydantic import BaseModel, model_validator
 
@@ -83,6 +84,7 @@ class SalidaLocalDraft(BaseModel):
     estado: EstadoSalidaLocal
     estado_publicabilidad: EstadoPublicabilidad = EstadoPublicabilidad.NO_PUBLICABLE
     fecha_objetivo_sugerida: Optional[str] = None
+    trazabilidad_editorial: dict[str, Any] | None = None
 
     @model_validator(mode="after")
     def validar_coherencia_trazabilidad(self):

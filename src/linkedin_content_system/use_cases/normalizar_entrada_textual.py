@@ -80,6 +80,13 @@ def normalizar_entrada_textual(entrada: EntradaContenido) -> FuenteTextualNormal
     experiencias = _lista_textual(metadata.get("experiencias_autorizadas"))
     instrucciones = _lista_textual(metadata.get("instrucciones_editoriales"))
     no_inferir = _lista_textual(metadata.get("no_inferir"))
+    pendientes = _lista_textual(metadata.get("afirmaciones_pendientes"))
+    # Los fragmentos son ubicaciones reproducibles, no una interpretación semántica.
+    fragmentos = [
+        {"id": f"{referencia}:p{indice}", "indice": indice, "texto": fragmento.strip()}
+        for indice, fragmento in enumerate(contenido.splitlines(), start=1)
+        if fragmento.strip()
+    ] or [{"id": f"{referencia}:p1", "indice": 1, "texto": contenido}]
 
     return FuenteTextualNormalizada(
         tipo_entrada=entrada.tipo_entrada,
@@ -92,4 +99,6 @@ def normalizar_entrada_textual(entrada: EntradaContenido) -> FuenteTextualNormal
         experiencias_autorizadas=experiencias,
         instrucciones_editoriales=instrucciones,
         no_inferir=no_inferir,
+        elementos_pendientes=pendientes,
+        fragmentos_evidencia=fragmentos,
     )

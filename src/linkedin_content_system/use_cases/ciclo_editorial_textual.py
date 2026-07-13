@@ -20,10 +20,11 @@ from linkedin_content_system.contracts import (
     VersionBorradorEditorial,
     TipoAprobacion,
     TransicionEstadoEditorial,
+    EstadoAuditoriaEditorial,
 )
 from linkedin_content_system.flows import ensamblar_flujo_local_simulado
 from linkedin_content_system.publishers import PublicationPublisherPort
-from linkedin_content_system.use_cases.ejecutar_flujo_textual import generar_candidato_textual
+from linkedin_content_system.use_cases.ejecutar_flujo_textual import generar_candidato_auditado, generar_candidato_textual
 from linkedin_content_system.use_cases.normalizar_entrada_textual import normalizar_entrada_textual
 from linkedin_content_system.use_cases.flujo_textual_runtime import (
     FilesystemNarrativeProfileResolver,
@@ -127,9 +128,10 @@ class FilesystemEditorialSessionStore:
         target = self._session_dir(sesion.id_entrada)
         versiones_dir = target / "versiones"
         versiones_dir.mkdir(parents=True, exist_ok=True)
-        version = sesion.versiones[-1]
-        version_path = versiones_dir / f"v{version.numero:03d}.md"
-        if not version_path.exists():
+        for version in sesion.versiones:
+            version_path = versiones_dir / f"v{version.numero:03d}.md"
+            if version_path.exists():
+                continue
             fd_version, temp_version_path = tempfile.mkstemp(
                 prefix=f".v{version.numero:03d}_", suffix=".md", dir=versiones_dir
             )
@@ -164,38 +166,56 @@ def generar_borrador_pendiente(
     fuente = normalizar_entrada_textual(entrada)
     resolver = profile_resolver or FilesystemNarrativeProfileResolver()
     perfil = resolver.resolve(entrada.perfil_narrativo.id_perfil)
-    post, diagnostico, idea = generar_candidato_textual(
-        entrada, adapter, resolver, channel_strategy, revisor
-    )
-    version = VersionBorradorEditorial(
-        numero=1,
-        texto=post.texto,
-        idea_central=idea.idea_central,
-        ideas_candidatas=idea.ideas_candidatas,
-        diagnostico_editorial=diagnostico,
-        creada_en=_now(clock),
-        trazabilidad_fuente={
+    trazabilidad = {
             "tipo_entrada": fuente.tipo_entrada.value,
             "referencia_fuente": fuente.referencia_fuente,
             "hash_contenido": fuente.hash_contenido,
+            "fragmentos_evidencia": fuente.fragmentos_evidencia,
             "hechos_explicitos": fuente.hechos_explicitos,
+            "opiniones_explicitas": fuente.opiniones_explicitas,
             "experiencias_autorizadas": fuente.experiencias_autorizadas,
             "no_inferir": fuente.no_inferir,
+            "elementos_pendientes": fuente.elementos_pendientes,
             "perfil_id": perfil.id_perfil,
             "perfil_estado_completitud": perfil.estado_completitud,
-        },
-    )
+    }
+    post, diagnostico, idea, auditoria = generar_candidato_auditado(entrada, adapter, resolver, channel_strategy, revisor)
+    versiones = [VersionBorradorEditorial(numero=1, texto=post.texto, idea_central=idea.idea_central, ideas_candidatas=idea.ideas_candidatas, diagnostico_editorial=diagnostico, auditoria_editorial=auditoria, creada_en=_now(clock), trazabilidad_fuente=trazabilidad)]
+    for numero in range(2, 4):
+        if auditoria.estado == EstadoAuditoriaEditorial.FAIL or not auditoria.feedback_estructurado:
+            break
+        anterior = versiones[-1]
+        feedback = auditoria.feedback_estructurado
+        class _AutoCorrectionAdapter:
+            def generar_texto(self, prompt: str, system_instruction: str | None = None) -> str:
+                return adapter.generar_texto(
+                    f"{prompt}\nBorrador anterior: {anterior.texto}\nFeedback interno: {feedback}\nAplica solo estas correcciones sin inventar datos.",
+                    system_instruction,
+                )
+        post, diagnostico, idea, auditoria = generar_candidato_auditado(entrada, _AutoCorrectionAdapter(), resolver, channel_strategy, revisor)
+        versiones.append(VersionBorradorEditorial(numero=numero, texto=post.texto, idea_central=idea.idea_central, ideas_candidatas=idea.ideas_candidatas, diagnostico_editorial=diagnostico, auditoria_editorial=auditoria, creada_en=_now(clock), version_anterior=anterior.numero, feedback_origen=feedback, trazabilidad_fuente=trazabilidad))
+    def _valor(version):
+        audit = version.auditoria_editorial
+        estado = audit.estado if audit else EstadoAuditoriaEditorial.REQUIERE_ATENCION
+        return {EstadoAuditoriaEditorial.PASS: 3, EstadoAuditoriaEditorial.WARN: 2, EstadoAuditoriaEditorial.REQUIERE_ATENCION: 1, EstadoAuditoriaEditorial.FAIL: 0}[estado], -(len(audit.hallazgos) if audit else 99)
+    seleccionada = max(versiones, key=_valor)
+    sin_valida = _valor(seleccionada)[0] == 0
+    defectos_persistentes = len(versiones) == 3 and bool(versiones[-1].auditoria_editorial.feedback_estructurado)
+    requiere_atencion = sin_valida or defectos_persistentes
     sesion = SesionEditorial(
         id_entrada=entrada.id_entrada,
         entrada=entrada,
-        estado=EstadoCicloEditorial.PENDIENTE_REVISION,
-        versiones=[version],
-        version_actual=1,
+        estado=EstadoCicloEditorial.REQUIERE_ATENCION if requiere_atencion else EstadoCicloEditorial.PENDIENTE_REVISION,
+        versiones=versiones,
+        version_actual=seleccionada.numero,
+        version_seleccionada=None if requiere_atencion else seleccionada.numero,
+        motivo_seleccion=("Los defectos persisten o no existe candidata válida; requiere atención." if requiere_atencion else f"v{seleccionada.numero:03d} seleccionada por estado y hallazgos de auditoría."),
+        mejora_editorial_demostrada=(seleccionada.numero > 1 and _valor(seleccionada) > _valor(versiones[0])),
         historial_estados=[
             TransicionEstadoEditorial(
-                estado_destino=EstadoCicloEditorial.PENDIENTE_REVISION,
+                estado_destino=EstadoCicloEditorial.REQUIERE_ATENCION if requiere_atencion else EstadoCicloEditorial.PENDIENTE_REVISION,
                 ocurrida_en=_now(clock),
-                motivo="Borrador inicial generado.",
+                motivo="Generación, auditoría y selección interna completadas.",
             )
         ],
         evidencia_ejecucion=evidencia_ejecucion,
@@ -244,7 +264,7 @@ def solicitar_ajustes(
             return adapter.generar_texto(prompt_revision, system_instruction)
 
     try:
-        post, diagnostico, idea = generar_candidato_textual(
+        post, diagnostico, idea, auditoria = generar_candidato_auditado(
             sesion.entrada, _FeedbackAdapter(), profile_resolver, channel_strategy, revisor
         )
     except ValueError:
@@ -266,10 +286,15 @@ def solicitar_ajustes(
             diagnostico_editorial=diagnostico,
             creada_en=_now(clock),
             version_anterior=anterior.numero,
-            feedback_origen=feedback_limpio,
+                feedback_origen=feedback_limpio,
+                auditoria_editorial=auditoria,
         )
     )
     sesion.version_actual = numero
+    if auditoria.estado != EstadoAuditoriaEditorial.FAIL:
+        sesion.version_seleccionada = numero
+        sesion.motivo_seleccion = f"v{numero:03d} seleccionada tras ajuste humano solicitado."
+        sesion.mejora_editorial_demostrada = False
     _transicionar(sesion, EstadoCicloEditorial.PENDIENTE_REVISION, clock=clock)
     sesion.aprobacion = None
     sesion.version_aprobada = None
@@ -290,6 +315,8 @@ def aprobar_version(
     versiones = {item.numero: item for item in sesion.versiones}
     if version not in versiones:
         raise ValueError(f"La versión {version} no existe.")
+    if sesion.version_seleccionada != version:
+        raise ValueError("Solo la candidata seleccionada puede aprobarse.")
     motivo_limpio = (
         _validar_texto_controlado(motivo_revision_reforzada, "motivo_revision_reforzada")
         if tipo_aprobacion == TipoAprobacion.REFORZADA
@@ -366,6 +393,13 @@ def preparar_salida_aprobada(
         diagnostico=version.diagnostico_editorial,
         aprobacion=sesion.aprobacion,
         publisher=publisher,
+        trazabilidad_editorial={
+            "version_seleccionada": sesion.version_seleccionada,
+            "referencia_fuente": version.trazabilidad_fuente.get("referencia_fuente") if version.trazabilidad_fuente else None,
+            "hash_fuente": version.trazabilidad_fuente.get("hash_contenido") if version.trazabilidad_fuente else None,
+            "auditoria": version.auditoria_editorial.model_dump() if version.auditoria_editorial else None,
+            "aprobacion": sesion.aprobacion.model_dump(),
+        },
     )
     _transicionar(sesion, EstadoCicloEditorial.PREPARADO)
     store.save(sesion)

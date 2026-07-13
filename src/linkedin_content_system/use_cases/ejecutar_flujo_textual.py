@@ -4,11 +4,14 @@ from typing import Callable, Optional
 
 from linkedin_content_system.ai.ports import ModelAdapter
 from linkedin_content_system.contracts import (
+    AuditoriaEditorial,
     AprobacionHumana,
     DiagnosticoEditorial,
     EntradaContenido,
     ManifestEvidencia,
     IdeaCentral,
+    EstadoRevision,
+    NivelRiesgoGenerico,
     PostCandidato,
 )
 from linkedin_content_system.publishers import PublicationPublisherPort
@@ -26,7 +29,7 @@ from linkedin_content_system.use_cases.generar_post_mock import generar_post_moc
 from linkedin_content_system.use_cases.normalizar_entrada_textual import normalizar_entrada_textual
 from linkedin_content_system.use_cases.revisar_candidata_editorial import (
     RevisorEditorial,
-    RevisorEditorialConservador,
+    RevisorEditorialDeterminista,
 )
 from linkedin_content_system.validators import (
     validar_sin_rutas_locales,
@@ -132,14 +135,14 @@ def validar_entrada_generable(entrada: EntradaContenido) -> None:
         validar_sin_rutas_locales(texto)
 
 
-def generar_candidato_textual(
+def generar_candidato_auditado(
     entrada: EntradaContenido,
     adapter: ModelAdapter,
     profile_resolver: NarrativeProfileResolver | None = None,
     channel_strategy: TextChannelStrategy | None = None,
     revisor: RevisorEditorial | None = None,
-) -> tuple[PostCandidato, DiagnosticoEditorial, IdeaCentral]:
-    normalizar_entrada_textual(entrada)
+) -> tuple[PostCandidato, DiagnosticoEditorial, IdeaCentral, AuditoriaEditorial]:
+    fuente = normalizar_entrada_textual(entrada)
     validar_entrada_generable(entrada)
 
     idea_central = extraer_idea_central(entrada.texto_base)
@@ -183,14 +186,38 @@ def generar_candidato_textual(
             "La salida del modelo inventa experiencia personal no respaldada por la entrada y no puede persistirse como post."
         )
     post = PostCandidato(texto=texto_generado)
-    diagnostico_editorial = (revisor or RevisorEditorialConservador()).revisar(
-        idea_central=idea_central,
-        diagnostico_base=diagnostico_base,
-        perfil=perfil_runtime,
-        texto_post=texto_generado,
+    auditoria = (revisor or RevisorEditorialDeterminista()).revisar(
+        fuente=fuente, perfil=perfil_runtime, texto_post=texto_generado
+    )
+    estado_revision = EstadoRevision.FAIL if auditoria.estado.value == "FAIL" else EstadoRevision.WARN
+    diagnostico_editorial = DiagnosticoEditorial(
+        claridad_idea=EstadoRevision.WARN,
+        audiencia=EstadoRevision.WARN,
+        hook=EstadoRevision.WARN,
+        voz_cliente=EstadoRevision.WARN,
+        autenticidad=EstadoRevision.FAIL if auditoria.estado.value == "FAIL" else EstadoRevision.WARN,
+        cta=EstadoRevision.WARN,
+        compliance=EstadoRevision.PASS,
+        riesgo_generico=NivelRiesgoGenerico.MEDIO,
+        estado_revision=estado_revision,
+        motivo="Auditoría editorial estructurada disponible; requiere revisión humana antes de la aprobación.",
+        ajustes_recomendados=auditoria.feedback_estructurado or None,
     )
 
-    return post, diagnostico_editorial, idea_central
+    return post, diagnostico_editorial, idea_central, auditoria
+
+
+def generar_candidato_textual(
+    entrada: EntradaContenido,
+    adapter: ModelAdapter,
+    profile_resolver: NarrativeProfileResolver | None = None,
+    channel_strategy: TextChannelStrategy | None = None,
+    revisor: RevisorEditorial | None = None,
+) -> tuple[PostCandidato, DiagnosticoEditorial, IdeaCentral]:
+    post, diagnostico, idea, _ = generar_candidato_auditado(
+        entrada, adapter, profile_resolver, channel_strategy, revisor
+    )
+    return post, diagnostico, idea
 
 
 def ejecutar_flujo_textual(

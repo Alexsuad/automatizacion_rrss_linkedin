@@ -240,6 +240,8 @@ def _mostrar_sesion_cliente(sesion) -> None:
         "requiere_ajustes": "requiere ajustes",
     }
     print(f"Estado editorial: {estados_legibles.get(sesion.estado.value, sesion.estado.value)}")
+    if sesion.estado.value == "requiere_atencion":
+        print("Estado: requiere atención antes de aprobar.")
     print("Observación editorial: requiere revisión humana antes de preparar una salida.")
     print("Acciones disponibles: aprobar, ajustar o rechazar.")
     print("\nBorrador:\n")
@@ -259,6 +261,8 @@ def _mostrar_sesion_administrador(sesion) -> None:
     print(f"Decisión humana: {sesion.aprobacion.estado.value if sesion.aprobacion else 'pendiente'}")
     print(f"Trazabilidad: {version.trazabilidad_fuente or {}}")
     print(f"Evidencia: {sesion.evidencia_ejecucion or {}}")
+    print(f"Candidata seleccionada: {sesion.version_seleccionada}")
+    print(f"Motivo de selección: {sesion.motivo_seleccion or 'no disponible'}")
 
 
 def _mostrar_sesion(sesion, vista: str) -> None:

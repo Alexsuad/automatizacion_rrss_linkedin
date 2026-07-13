@@ -25,3 +25,5 @@ class FuenteTextualNormalizada(BaseModel):
     instrucciones_editoriales: list[str] = Field(default_factory=list)
     no_inferir: list[str] = Field(default_factory=list)
     advertencias: list[str] = Field(default_factory=list)
+    fragmentos_evidencia: list[dict[str, object]] = Field(default_factory=list)
+    elementos_pendientes: list[str] = Field(default_factory=list)

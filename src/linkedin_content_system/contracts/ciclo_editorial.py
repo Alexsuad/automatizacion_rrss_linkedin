@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field, model_validator
 
 from .entrada import EntradaContenido
 from .editorial import DiagnosticoEditorial
+from .auditoria_editorial import AuditoriaEditorial
 from .salida import AprobacionHumana
 
 
@@ -34,6 +35,7 @@ class VersionBorradorEditorial(BaseModel):
     version_anterior: int | None = None
     feedback_origen: str | None = None
     trazabilidad_fuente: dict[str, Any] | None = None
+    auditoria_editorial: AuditoriaEditorial | None = None
 
 
 class SesionEditorial(BaseModel):
@@ -46,6 +48,9 @@ class SesionEditorial(BaseModel):
     version_aprobada: int | None = None
     historial_estados: list[TransicionEstadoEditorial] = Field(default_factory=list)
     evidencia_ejecucion: dict[str, Any] | None = None
+    version_seleccionada: int | None = None
+    motivo_seleccion: str | None = None
+    mejora_editorial_demostrada: bool = False
 
     @model_validator(mode="after")
     def validar_version_actual(self):

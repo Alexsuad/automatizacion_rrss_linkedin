@@ -33,3 +33,9 @@ from .ciclo_editorial import (
     VersionBorradorEditorial,
 )
 from .fuente_normalizada import FuenteTextualNormalizada
+from .auditoria_editorial import (
+    AuditoriaEditorial,
+    EstadoAuditoriaEditorial,
+    HallazgoEditorial,
+    SeveridadHallazgoEditorial,
+)

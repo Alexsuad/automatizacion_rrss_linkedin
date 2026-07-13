@@ -22,7 +22,7 @@
 - **Depende de**: evidencia de planes 006 y 007
 - **Categoría**: direction
 - **Planned at**: commit `bb581db`, 2026-07-12
-- **Estado actual**: INCREMENTO_1_IMPLEMENTADO_PENDING_COMMIT
+- **Estado actual**: INCREMENTO_1_DONE_PENDING_COMMIT
 
 ## Producto objetivo y límites
 
@@ -161,6 +161,10 @@ humana y no abren iteraciones ilimitadas.
 
 **Habilita**: audio/transcripción y dry-run compuesto sobre una entrada común.
 
+**Primera implementación**: commit `97d4e7e`. La auditoría posterior detectó
+que faltaban evidencia fragmentada, auditoría estructurada y autocorrección
+interna; fueron corregidas en el cierre funcional del Incremento 1.
+
 **Resultado de ejecución (2026-07-13)**: `PASS` offline. Las entradas
 `TEXTO_MANUAL`, `DOCUMENTO_BASE` y `BORRADOR_EXISTENTE` pasan por la misma
 normalización, conservan hash, referencia relativa, hechos y experiencias
@@ -170,8 +174,9 @@ regeneraciones y pasa a `REQUIERE_ATENCION` cuando se agotan. La CLI ofrece
 vista cliente y administrativa; la aprobación reforzada puede preparar
 `LocalDraft` o `ExternalDryRunPublisher`, que declara no publicar. Smoke
 offline: documento sintético -> sesión pendiente -> aprobación humana ->
-external dry-run, sin red ni `LocalDraft`. Pendiente únicamente consolidar los
-cambios en un commit selectivo.
+external dry-run, sin red ni `LocalDraft`. El auditor separado persiste
+hallazgos y feedback estructurado; el ciclo selecciona explícitamente la mejor
+versión o exige atención tras dos regeneraciones. Incremento 1 queda `DONE`.
 
 ### Incremento 2 — Audio local a candidata revisable
 
@@ -349,13 +354,9 @@ mejora dentro del incremento funcional que consume esa candidata.
 
 ## Próxima misión ejecutable
 
-Ejecutar el **Incremento 1: Candidata editorial multifuente textual** como una
-misión única. Debe empezar con una línea base limpia y auditable, leer los
-contratos de entrada, perfil, salida y calidad, y añadir solo los contratos,
-casos de uso, CLI/tests y documentación operativa necesarios para documento
-textual/borrador existente y Brand Voice verificable. Debe preservar el ciclo
-de aprobación y publishers existentes; no puede usar proveedores reales ni
-convertirse en un plan de retoque infinito de prompts.
+Ejecutar el **Incremento 2: Audio local a candidata revisable** solo sobre un
+commit que incluya este cierre. No reabrir el Incremento 1 ni el Plan 007 salvo
+una regresión demostrada de seguridad, trazabilidad o aprobación.
 
 ## Gates transversales antes de cada incremento
 

@@ -14,6 +14,7 @@ class EstadoCicloEditorial(str, Enum):
     APROBADO = "aprobado"
     RECHAZADO = "rechazado"
     PREPARADO = "preparado"
+    REQUIERE_ATENCION = "requiere_atencion"
 
 
 class TransicionEstadoEditorial(BaseModel):
@@ -32,6 +33,7 @@ class VersionBorradorEditorial(BaseModel):
     creada_en: str
     version_anterior: int | None = None
     feedback_origen: str | None = None
+    trazabilidad_fuente: dict[str, Any] | None = None
 
 
 class SesionEditorial(BaseModel):

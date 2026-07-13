@@ -168,6 +168,9 @@ def test_ejecutar_flujo_textual_compone_prompt_con_senales_derivadas(tmp_path, e
     assert "Tono base:" in adapter.system_instruction_recibida
     assert "Devuelve exclusivamente el post candidato" in adapter.prompt_recibido
     assert "No incluyas análisis" in adapter.prompt_recibido
+    assert "No añadas preámbulos como 'Aquí tienes un borrador del post'" in adapter.prompt_recibido
+    assert "No afirmes experiencias personales en primera persona" in adapter.prompt_recibido
+    assert "Mantén la salida entre 80 y 120 palabras" in adapter.prompt_recibido
 
 
 def test_ejecutar_flujo_textual_bloquea_entrada_insegura_antes_del_adapter(
@@ -200,11 +203,37 @@ def test_ejecutar_flujo_textual_bloquea_entrada_insegura_antes_del_adapter(
     assert not (tmp_path / "localdraft_in_texto_001").exists()
 
 
+def test_experiencia_personal_solo_pasa_si_esta_autorizada(entrada_valida):
+    class AdapterExperiencial(ModelAdapter):
+        def generar_texto(self, prompt: str, system_instruction: str = None) -> str:
+            return "Recuerdo cuando el equipo tuvo que revisar cada cambio antes de aprobarlo. ¿Te ocurre algo parecido?"
+
+    with pytest.raises(ValueError, match="experiencia personal no respaldada"):
+        generar_candidato_textual(entrada_valida, AdapterExperiencial())
+
+    entrada_autorizada = entrada_valida.model_copy(
+        update={
+            "metadatos_origen": {
+                "referencia_fuente": "fuente_autorizada",
+                "experiencias_autorizadas": ["Recuerdo cuando el equipo tuvo que revisar cada cambio."],
+            }
+        }
+    )
+    post, _, _ = generar_candidato_textual(entrada_autorizada, AdapterExperiencial())
+
+    assert post.texto.startswith("Recuerdo cuando")
+
+
 @pytest.mark.parametrize(
     ("salida", "motivo"),
     [
         ("Post útil.\n\nRevisión inicial:\nFalta más voz.", "metatexto editorial"),
+        ("Aquí tienes un borrador del post:\n\nUn texto claro y breve.", "metatexto editorial"),
         ("Un post que termina a mitad de una pala", "termina con un cierre"),
+        (
+            "Recuerdo cuando trabajé en un proyecto similar y aprendí mucho.\n¿Qué opinas?",
+            "experiencia personal no respaldada",
+        ),
     ],
 )
 def test_generar_candidato_rechaza_salida_contaminada_o_truncada(
@@ -218,6 +247,22 @@ def test_generar_candidato_rechaza_salida_contaminada_o_truncada(
 
     with pytest.raises(ValueError, match=motivo):
         generar_candidato_textual(entrada_valida, AdapterDefectuoso())
+
+
+def test_generar_candidato_admite_experiencia_personal_si_la_entrada_la_respalda(entrada_valida):
+    class AdapterConExperienciaRespaldada(ModelAdapter):
+        def generar_texto(self, prompt: str, system_instruction: str = None) -> str:
+            return (
+                "Aprendí que una automatización útil empieza con un flujo simple y revisable.\n"
+                "¿Qué opinas?"
+            )
+
+    _, diagnostico, _ = generar_candidato_textual(
+        entrada_valida,
+        AdapterConExperienciaRespaldada(),
+    )
+
+    assert diagnostico.compliance.value == "PASS"
 
 
 def test_post_real_generico_queda_en_warn_editorial_aunque_pase_estructura(entrada_valida):

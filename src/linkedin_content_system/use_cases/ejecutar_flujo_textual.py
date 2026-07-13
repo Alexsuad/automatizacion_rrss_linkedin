@@ -5,16 +5,11 @@ from typing import Callable, Optional
 from linkedin_content_system.ai.ports import ModelAdapter
 from linkedin_content_system.contracts import (
     AprobacionHumana,
-    BloqueoCritico,
     DiagnosticoEditorial,
     EntradaContenido,
-    EstadoRevision,
     ManifestEvidencia,
     IdeaCentral,
-    NivelRiesgoGenerico,
     PostCandidato,
-    TipoBloqueoCritico,
-    TipoEntrada,
 )
 from linkedin_content_system.publishers import PublicationPublisherPort
 from linkedin_content_system.use_cases.diagnosticar_base_editorial import diagnosticar_base_editorial
@@ -24,20 +19,20 @@ from linkedin_content_system.use_cases.flujo_textual_runtime import (
     FilesystemNarrativeProfileResolver,
     LinkedInTextChannelStrategy,
     NarrativeProfileResolver,
-    PerfilNarrativoRuntime,
     TextChannelStrategy,
 )
 from linkedin_content_system.use_cases.generar_borrador_local import generar_borrador_local_desde_simulacion
 from linkedin_content_system.use_cases.generar_post_mock import generar_post_mock
+from linkedin_content_system.use_cases.normalizar_entrada_textual import normalizar_entrada_textual
+from linkedin_content_system.use_cases.revisar_candidata_editorial import (
+    RevisorEditorial,
+    RevisorEditorialConservador,
+)
 from linkedin_content_system.validators import (
     validar_sin_rutas_locales,
     validar_texto_sin_pii_basica,
     validar_texto_sin_secretos_basicos,
 )
-
-
-def _normalizar_texto(texto: str) -> str:
-    return " ".join((texto or "").lower().split())
 
 
 def _normalizar_para_revision(texto: str) -> str:
@@ -46,6 +41,61 @@ def _normalizar_para_revision(texto: str) -> str:
         for caracter in unicodedata.normalize("NFD", texto).lower()
         if unicodedata.category(caracter) != "Mn"
     )
+
+
+def _contiene_metatexto_visible(texto_revision: str) -> bool:
+    patrones = [
+        r"(?m)^\s*(?:#{1,6}\s*)?(?:revision inicial|analisis|notas editoriales|explicacion)\s*:",
+        r"(?m)^\s*(?:aqui tienes|te comparto|te dejo)\s+(?:un\s+)?(?:borrador|post|texto)",
+        r"(?m)^\s*(?:borrador del post|post candidato|publicacion para linkedin)\s*:",
+    ]
+    return any(re.search(patron, texto_revision) for patron in patrones)
+
+
+def _tiene_cierre_completo(texto_limpio: str) -> bool:
+    return bool(re.search(r'[.!?…][\"\'”’\)\]]*$', texto_limpio))
+
+
+def _tiene_invencion_experiencial_no_respaldada(
+    texto_post: str,
+    texto_base: str,
+    experiencias_autorizadas: tuple[str, ...] = (),
+) -> bool:
+    texto_post_revision = _normalizar_para_revision(texto_post)
+    texto_base_revision = _normalizar_para_revision(texto_base)
+
+    patrones_experienciales = {
+        "recuerdo": [r"\brecuerdo cuando\b", r"\brecuerdo\b"],
+        "trabajo_previo": [r"\btrabaje\b", r"\btrabajamos\b"],
+        "aprendizaje": [r"\baprendi\b", r"\baprendimos\b"],
+        "realizacion": [r"\bme di cuenta\b", r"\bnos dimos cuenta\b"],
+        "experiencia": [r"\ben mi experiencia\b", r"\ben nuestra experiencia\b"],
+        "vivencia": [r"\bvivi\b", r"\bnos paso\b", r"\bme paso\b"],
+        "memoria_proyecto": [r"\bproyecto similar\b"],
+    }
+
+    categorias_post = {
+        categoria
+        for categoria, patrones in patrones_experienciales.items()
+        if any(re.search(patron, texto_post_revision) for patron in patrones)
+    }
+    if not categorias_post:
+        return False
+
+    texto_autorizado_revision = " ".join(
+        _normalizar_para_revision(experiencia) for experiencia in experiencias_autorizadas
+    )
+    categorias_base = {
+        categoria
+        for categoria, patrones in patrones_experienciales.items()
+        if any(
+            re.search(patron, texto_base_revision) or re.search(patron, texto_autorizado_revision)
+            for patron in patrones
+        )
+    }
+
+    categorias_no_respaldadas = categorias_post - categorias_base
+    return bool(categorias_no_respaldadas)
 
 
 def _validar_salida_post_candidata(texto_post: str) -> str:
@@ -58,13 +108,10 @@ def _validar_salida_post_candidata(texto_post: str) -> str:
         return texto_limpio
 
     texto_revision = _normalizar_para_revision(texto_limpio)
-    patron_metatexto = re.compile(
-        r"(?m)^\s*(?:#{1,6}\s*)?(?:revision inicial|analisis|notas editoriales|explicacion)\s*:",
-    )
-    if patron_metatexto.search(texto_revision):
+    if _contiene_metatexto_visible(texto_revision):
         raise ValueError("La salida del modelo contiene metatexto editorial y no puede persistirse como post.")
 
-    if not re.search(r'[.!?…][\"\'”’\)\]]*$', texto_limpio):
+    if not _tiene_cierre_completo(texto_limpio):
         raise ValueError("La salida del modelo termina con un cierre incompleto y no puede persistirse como post.")
     return texto_limpio
 
@@ -85,102 +132,14 @@ def validar_entrada_generable(entrada: EntradaContenido) -> None:
         validar_sin_rutas_locales(texto)
 
 
-def _construir_diagnostico_editorial_minimo(
-    entrada: EntradaContenido,
-    idea_central,
-    diagnostico_base,
-    prompt: str,
-    perfil_runtime: PerfilNarrativoRuntime,
-    texto_post: str,
-) -> DiagnosticoEditorial:
-    bloqueos_criticos = []
-    cumplimiento_ok = True
-
-    try:
-        validar_texto_sin_pii_basica(texto_post)
-        validar_texto_sin_secretos_basicos(texto_post)
-        validar_sin_rutas_locales(texto_post)
-    except ValueError as exc:
-        cumplimiento_ok = False
-        bloqueos_criticos.append(
-            BloqueoCritico(
-                tipo=TipoBloqueoCritico.COMPLIANCE,
-                descripcion=str(exc),
-            )
-        )
-
-    texto_post_normalizado = _normalizar_texto(texto_post)
-    idea_normalizada = _normalizar_texto(idea_central.idea_central)
-    tokens_idea = [token for token in idea_normalizada.split() if len(token) > 3]
-
-    claridad_idea = (
-        EstadoRevision.PASS
-        if texto_post.strip() and (not tokens_idea or any(token in texto_post_normalizado for token in tokens_idea))
-        else EstadoRevision.WARN
-    )
-    # Estas dimensiones requieren juicio editorial. Las señales sintácticas
-    # (longitud, perfil disponible o una pregunta final) no prueban calidad.
-    audiencia = EstadoRevision.WARN
-    hook = EstadoRevision.WARN if texto_post.strip() else EstadoRevision.FAIL
-    voz_cliente = EstadoRevision.WARN if perfil_runtime.id_perfil else EstadoRevision.FAIL
-    autenticidad = EstadoRevision.WARN if cumplimiento_ok else EstadoRevision.FAIL
-    cta = EstadoRevision.WARN if texto_post.strip() else EstadoRevision.FAIL
-    compliance = EstadoRevision.PASS if cumplimiento_ok else EstadoRevision.FAIL
-    riesgo_generico = NivelRiesgoGenerico.MEDIO if cumplimiento_ok else NivelRiesgoGenerico.ALTO
-
-    dimensiones_editoriales = (
-        claridad_idea,
-        audiencia,
-        hook,
-        voz_cliente,
-        autenticidad,
-        cta,
-        compliance,
-    )
-    if not cumplimiento_ok:
-        estado_revision = EstadoRevision.FAIL
-    elif any(revision == EstadoRevision.WARN for revision in dimensiones_editoriales):
-        estado_revision = EstadoRevision.WARN
-    else:
-        estado_revision = EstadoRevision.PASS
-
-    motivo = (
-        f"{diagnostico_base.resumen} La validación estructural se registra en compliance. "
-        "La evaluación automática no puede demostrar calidad de hook, adecuación de audiencia, "
-        "voz, autenticidad ni calidad del CTA; requiere revisión humana."
-    )
-
-    recomendaciones = list(diagnostico_base.recomendaciones)
-    recomendaciones.append(
-        "Revisar hook, adecuación de audiencia, voz, autenticidad y CTA con criterio humano."
-    )
-    ajustes_recomendados = " | ".join(recomendaciones)
-
-    return DiagnosticoEditorial(
-        claridad_idea=claridad_idea,
-        audiencia=audiencia,
-        hook=hook,
-        voz_cliente=voz_cliente,
-        autenticidad=autenticidad,
-        cta=cta,
-        compliance=compliance,
-        riesgo_generico=riesgo_generico,
-        estado_revision=estado_revision,
-        motivo=motivo,
-        ajustes_recomendados=ajustes_recomendados,
-        bloqueos_criticos=bloqueos_criticos,
-    )
-
-
 def generar_candidato_textual(
     entrada: EntradaContenido,
     adapter: ModelAdapter,
     profile_resolver: NarrativeProfileResolver | None = None,
     channel_strategy: TextChannelStrategy | None = None,
+    revisor: RevisorEditorial | None = None,
 ) -> tuple[PostCandidato, DiagnosticoEditorial, IdeaCentral]:
-    if entrada.tipo_entrada != TipoEntrada.TEXTO_MANUAL:
-        raise ValueError("Este flujo solo admite entradas de texto manual.")
-
+    normalizar_entrada_textual(entrada)
     validar_entrada_generable(entrada)
 
     idea_central = extraer_idea_central(entrada.texto_base)
@@ -210,13 +169,24 @@ def generar_candidato_textual(
         adapter,
         system_instruction=request.system_instruction,
     ))
+    experiencias_input = tuple(
+        str(item).strip()
+        for item in (entrada.metadatos_origen or {}).get("experiencias_autorizadas", [])
+        if str(item).strip()
+    )
+    if _tiene_invencion_experiencial_no_respaldada(
+        texto_generado,
+        entrada.texto_base,
+        experiencias_input + perfil_runtime.experiencias_autorizadas,
+    ):
+        raise ValueError(
+            "La salida del modelo inventa experiencia personal no respaldada por la entrada y no puede persistirse como post."
+        )
     post = PostCandidato(texto=texto_generado)
-    diagnostico_editorial = _construir_diagnostico_editorial_minimo(
-        entrada=entrada,
+    diagnostico_editorial = (revisor or RevisorEditorialConservador()).revisar(
         idea_central=idea_central,
         diagnostico_base=diagnostico_base,
-        prompt=request.prompt,
-        perfil_runtime=perfil_runtime,
+        perfil=perfil_runtime,
         texto_post=texto_generado,
     )
 

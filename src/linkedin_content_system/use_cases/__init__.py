@@ -11,6 +11,8 @@ from .validar_compatibilidad_contexto import validar_compatibilidad_contexto
 from .validar_cambio_contexto import validar_cambio_contexto
 from .ejecutar_pipeline_contexto_offline import ejecutar_pipeline_contexto_offline
 from .construir_evidencia_contexto_usado import construir_evidencia_contexto_usado
+from .normalizar_entrada_textual import cargar_documento_textual, normalizar_entrada_textual
+from .revisar_candidata_editorial import RevisorEditorial, RevisorEditorialConservador
 from .ciclo_editorial_textual import (
     FilesystemEditorialSessionStore,
     aprobar_version,
@@ -40,7 +42,9 @@ __all__ = [
     ,"preparar_salida_aprobada"
     ,"rechazar_version"
     ,"solicitar_ajustes"
+    ,"cargar_documento_textual"
+    ,"normalizar_entrada_textual"
+    ,"RevisorEditorial"
+    ,"RevisorEditorialConservador"
 ]
-
-
 

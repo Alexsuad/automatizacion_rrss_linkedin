@@ -1,0 +1,19 @@
+{
+  "id_entrada": "incremento1_manual",
+  "tipo_entrada": "texto_manual",
+  "texto_base": "La revisión humana mantiene el criterio cuando automatizamos tareas repetitivas.",
+  "intencion_editorial": {
+    "estado_intencion_editorial": "completa",
+    "idea_central": "Automatizar no sustituye el criterio humano",
+    "cta_intencionado": "¿Qué mantendrías bajo revisión humana?"
+  },
+  "perfil_narrativo": {"id_perfil": "perfil_fixture"},
+  "canales_destino": ["linkedin"],
+  "metadatos_origen": {
+    "referencia_fuente": "fixture_manual_incremento1",
+    "hechos_autorizados": ["La revisión humana precede a la aprobación."],
+    "experiencias_autorizadas": []
+  },
+  "estado_privacidad": {"sanitizado": true},
+  "restricciones": {}
+}

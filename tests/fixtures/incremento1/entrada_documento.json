@@ -1,0 +1,20 @@
+{
+  "id_entrada": "incremento1_documento",
+  "tipo_entrada": "documento_base",
+  "texto_base": "El documento explica que toda candidata pasa por revisión humana antes de cualquier salida.",
+  "intencion_editorial": {
+    "estado_intencion_editorial": "completa",
+    "idea_central": "La revisión humana precede a cualquier salida",
+    "cta_intencionado": "¿Qué revisarías antes de aprobar?"
+  },
+  "perfil_narrativo": {"id_perfil": "perfil_fixture"},
+  "canales_destino": ["linkedin"],
+  "metadatos_origen": {
+    "referencia_fuente": "fixture_documento_incremento1",
+    "hechos_autorizados": ["Toda candidata pasa por revisión humana antes de la salida."],
+    "experiencias_autorizadas": [],
+    "no_inferir": ["No afirmar resultados de negocio."]
+  },
+  "estado_privacidad": {"sanitizado": true},
+  "restricciones": {}
+}

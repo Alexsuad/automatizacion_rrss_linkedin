@@ -10,7 +10,7 @@
 - **Depends on**: plans/005-prueba-valor-flujo-textual-local.md
 - **Category**: integration
 - **Planned at**: 2026-07-10
-- **Status after implementation**: IMPLEMENTED_PENDING_REAL_SMOKE
+- **Status final**: DONE
 
 ## Objective
 
@@ -114,9 +114,18 @@ Criterio PASS:
 - una sola llamada;
 - dentro del timeout.
 
-Resultado:
+Resultado histórico:
 
-- `PENDIENTE` en este entorno por ausencia de credenciales configuradas.
+- El comando anterior pertenece al flujo legacy, que exigía aprobación antes de
+  generar y creaba `LocalDraft`; no debe reutilizarse como smoke vigente.
+- La integración quedó validada de forma sustancial por el smoke y benchmark de
+  Plan 007: `LiteLLMModelAdapter` con Ollama generó sesiones pendientes sin
+  publicación en `output/real_smoke_editorial_quality_20260711T231104Z/` y
+  `output/benchmark_real_20260712T095432Z/`.
+- El resumen del benchmark registra cinco generaciones y dos regeneraciones
+  reales con proveedor, modelo, hashes, duración y estados saneados. Esto
+  satisface el objetivo de integración de este plan sin reintroducir el flujo
+  legacy de aprobación anticipada.
 
 ## Acceptance criteria
 

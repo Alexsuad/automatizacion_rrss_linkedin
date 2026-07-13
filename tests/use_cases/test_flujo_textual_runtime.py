@@ -27,6 +27,14 @@ def test_filesystem_profile_resolver_carga_perfil_desde_profile_dir(tmp_path):
                     "frases_prohibidas": ["hola red"],
                 },
                 "cta": {"cta_preferidos": ["pregunta final concreta"]},
+                "nivel_tecnico": "alto",
+                "nivel_opinion_personal": "moderado",
+                "temas_permitidos": ["automatización"],
+                "temas_prohibidos": ["promesas financieras"],
+                "experiencias_autorizadas": ["He revisado candidatas antes de aprobarlas."],
+                "afirmaciones_sostenibles": ["La revisión humana sigue siendo necesaria."],
+                "ejemplos": {"si_suena": ["Empezar simple ayuda."], "no_suena": ["Revoluciona todo."]},
+                "estado_completitud": "completo",
             },
             ensure_ascii=False,
         ),
@@ -42,6 +50,11 @@ def test_filesystem_profile_resolver_carga_perfil_desde_profile_dir(tmp_path):
     assert perfil.palabras_clave == ("flujo", "paso revisable")
     assert perfil.frases_prohibidas == ("hola red",)
     assert perfil.cta_preferidos == ("pregunta final concreta",)
+    assert perfil.nivel_tecnico == "alto"
+    assert perfil.temas_prohibidos == ("promesas financieras",)
+    assert perfil.experiencias_autorizadas == ("He revisado candidatas antes de aprobarlas.",)
+    assert perfil.ejemplos_si_suena == ("Empezar simple ayuda.",)
+    assert perfil.estado_completitud == "completo"
 
 
 @pytest.mark.parametrize(

@@ -464,3 +464,36 @@ def test_cli_no_anuncia_aprobacion_simple_si_la_version_requiere_refuerzo(tmp_pa
 
     assert exit_code == 1
     assert not (tmp_path / "localdraft_in_cli_warn_001").exists()
+
+
+def test_cli_documento_y_borrador_generan_sesion_con_fuente_distinta(tmp_path):
+    documento = tmp_path / "fuente.md"
+    documento.write_text("Un documento sintético conserva los hechos autorizados.", encoding="utf-8")
+    for argumento, contenido, entrada_id in (
+        ("--documento", str(documento), "cli_documento"),
+        ("--borrador", "Un borrador sintético debe quedar pendiente.", "cli_borrador"),
+    ):
+        result = subprocess.run(
+            [
+                sys.executable, "-m", "linkedin_content_system.cli.flujo_textual",
+                argumento, contenido, "--id-entrada", entrada_id, "--output-dir", str(tmp_path), "--vista", "cliente",
+            ], capture_output=True, text=True, env=_cli_env(),
+        )
+        assert result.returncode == 0
+        assert "Administración:" not in result.stdout
+        assert (tmp_path / f"editorial_{entrada_id}" / "sesion.json").exists()
+
+
+def test_cli_vista_cliente_no_expone_evidencia_tecnica(tmp_path):
+    result = subprocess.run(
+        [
+            sys.executable, "-m", "linkedin_content_system.cli.flujo_textual",
+            "--texto", "Una vista cliente presenta solo la candidata revisable.",
+            "--id-entrada", "cli_cliente", "--output-dir", str(tmp_path), "--vista", "cliente",
+        ], capture_output=True, text=True, env=_cli_env(),
+    )
+
+    assert result.returncode == 0
+    assert "Administración:" not in result.stdout
+    assert "Validación técnica:" not in result.stdout
+    assert "Evidencia:" not in result.stdout

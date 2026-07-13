@@ -18,6 +18,7 @@
 - `IN PROGRESS`: ejecucion documental o tecnica en curso sin smoke concluido
 - `DONE`: smoke real satisfactorio, benchmark y ciclos de feedback completados con evidencia suficiente
 - `BLOCKED`: la etapa no puede continuar sin tocar alcance prohibido, sin autorizacion o sin credencial local valida
+- `IMPLEMENTED_PRODUCT_GATE_NOT_MET`: la implementacion y la evidencia tecnica estan completas, pero el gate de aceptacion editorial del producto no se alcanzo
 
 ## Objetivo
 
@@ -207,6 +208,18 @@ La etapa se considera cerrada solo si existe evidencia de que:
 - el benchmark real produce evidencia reproducible
 - hay comparacion `v1/v2` en dos casos
 - se decide con evidencia si conviene mejorar texto, pasar a audio o abrir `dry_run` externo
+
+## Cierre documental
+
+- **Estado final**: `IMPLEMENTED_PRODUCT_GATE_NOT_MET`.
+- **Evidencia principal**: `output/benchmark_real_20260712T095432Z/benchmark_resumen.json`.
+- **Ejecucion tecnica**: `PASS`. El benchmark genero y persistio cinco piezas con `estado_tecnico=PASS` y `estado_estructural=PASS`; no creo `LocalDraft`, no aprobo versiones y no publico contenido.
+- **Ciclos de feedback**: completos para `benchmark_02` y `benchmark_04`, con trazabilidad `v1 -> feedback -> v2` y salida textual diferente en ambos casos.
+- **Evaluacion editorial automatica**: las cinco piezas y las dos versiones regeneradas permanecen en `WARN`, con decision humana `PENDIENTE`. Esto conserva la separacion entre estructura/compliance demostrables y calidad editorial no demostrada.
+- **Evaluacion administrativa humana**: `WARN` global y gate de producto `NOT_MET`. La instruccion de cierre confirma que no se alcanzo el minimo de `4 de 5` piezas calificadas `A/B` como aprovechables sin reescritura completa. No se registran notas individuales `A/B/C/D` porque no fueron entregadas desglosadas por pieza; no se infieren desde las heuristicas ni desde los textos.
+- **Feedback**: `texto_modificado=true` solo demuestra que se genero una nueva version. No demuestra `mejora_editorial_demostrada` sin una comparacion humana que confirme mejora y ausencia de degradacion de fidelidad, voz y autenticidad.
+- **Decision**: las brechas de voz, naturalidad, utilidad y calidad del CTA pasan al mapa general de recuperacion del producto. No se abre un plan aislado de perfeccionamiento textual desde este cierre.
+- **No validado**: aceptacion editorial del producto, voz reconocible del cliente y una mejora editorial comprobada en `v2`. Este plan no autoriza por sí solo la expansión a audio ni a `dry_run` externo; la siguiente capacidad se decidirá dentro del mapa general de recuperación del producto, considerando estas brechas.
 
 ## Verificacion esperada al cerrar
 

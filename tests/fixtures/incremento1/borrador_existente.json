@@ -1,0 +1,19 @@
+{
+  "id_entrada": "incremento1_borrador",
+  "tipo_entrada": "borrador_existente",
+  "texto_base": "Un borrador existente puede mejorar sin inventar resultados ni experiencias.",
+  "intencion_editorial": {
+    "estado_intencion_editorial": "completa",
+    "idea_central": "Mejorar un borrador exige conservar su fuente",
+    "cta_intencionado": "¿Cómo revisas un borrador antes de publicarlo?"
+  },
+  "perfil_narrativo": {"id_perfil": "perfil_fixture"},
+  "canales_destino": ["linkedin"],
+  "metadatos_origen": {
+    "referencia_fuente": "fixture_borrador_incremento1",
+    "hechos_autorizados": ["El borrador requiere una decisión humana antes de la salida."],
+    "experiencias_autorizadas": []
+  },
+  "estado_privacidad": {"sanitizado": true},
+  "restricciones": {}
+}

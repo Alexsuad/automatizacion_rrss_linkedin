@@ -21,7 +21,7 @@ from linkedin_content_system.contracts import (
     PerfilNarrativoReferencia,
     TipoEntrada,
 )
-from linkedin_content_system.publishers import LocalDraftPublisher
+from linkedin_content_system.publishers import ExternalDryRunPublisher, LocalDraftPublisher
 from linkedin_content_system.use_cases.flujo_textual_runtime import (
     FilesystemNarrativeProfileResolver,
     LinkedInTextChannelStrategy,
@@ -35,6 +35,7 @@ from linkedin_content_system.use_cases import (
     rechazar_version,
     solicitar_ajustes,
 )
+from linkedin_content_system.use_cases.normalizar_entrada_textual import cargar_documento_textual
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -42,6 +43,8 @@ def _build_parser() -> argparse.ArgumentParser:
     entrada = parser.add_mutually_exclusive_group()
     entrada.add_argument("--input-json", help="Ruta al archivo JSON con EntradaContenido.")
     entrada.add_argument("--texto", help="Texto manual para generar sin preparar JSON.")
+    entrada.add_argument("--documento", help="Documento .txt o .md para normalizar localmente.")
+    entrada.add_argument("--borrador", help="Borrador existente para revisar y mejorar.")
     parser.add_argument("--output-dir", required=True, help="Directorio base donde se guardara el LocalDraft.")
     parser.add_argument(
         "--accion",
@@ -50,6 +53,19 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Etapa del ciclo editorial local.",
     )
     parser.add_argument("--id-entrada", help="Identificador seguro de la entrada o sesión.")
+    parser.add_argument("--perfil", default="perfil_default", help="Identificador del perfil narrativo.")
+    parser.add_argument(
+        "--vista",
+        choices=["cliente", "administrador"],
+        default="administrador",
+        help="Nivel de detalle mostrado tras generar o ajustar.",
+    )
+    parser.add_argument(
+        "--publisher",
+        choices=["localdraft", "external-dry-run"],
+        default="localdraft",
+        help="Destino local disponible únicamente después de aprobar.",
+    )
     parser.add_argument("--feedback", help="Feedback textual para crear una nueva versión.")
     parser.add_argument("--version", type=int, help="Versión que se desea aprobar.")
     parser.add_argument(
@@ -121,8 +137,47 @@ def _entrada_desde_texto(args: argparse.Namespace) -> EntradaContenido:
             estado_intencion_editorial=EstadoIntencionEditorial.TENTATIVA,
             idea_central=args.texto.strip()[:280],
         ),
-        perfil_narrativo=PerfilNarrativoReferencia(id_perfil="perfil_default"),
+        perfil_narrativo=PerfilNarrativoReferencia(id_perfil=args.perfil),
         canales_destino=["linkedin"],
+        estado_privacidad=EstadoPrivacidad(sanitizado=True),
+        restricciones={},
+    )
+
+
+def _entrada_desde_documento(args: argparse.Namespace) -> EntradaContenido:
+    if not args.id_entrada:
+        raise ValueError("--id-entrada es obligatorio cuando se usa --documento.")
+    contenido = cargar_documento_textual(args.documento)
+    return EntradaContenido(
+        id_entrada=args.id_entrada,
+        tipo_entrada=TipoEntrada.DOCUMENTO_BASE,
+        texto_base=contenido,
+        intencion_editorial=IntencionEditorial(
+            estado_intencion_editorial=EstadoIntencionEditorial.TENTATIVA,
+            idea_central=contenido.strip()[:280],
+        ),
+        perfil_narrativo=PerfilNarrativoReferencia(id_perfil=args.perfil),
+        canales_destino=["linkedin"],
+        metadatos_origen={"referencia_fuente": f"documento_{args.id_entrada}"},
+        estado_privacidad=EstadoPrivacidad(sanitizado=True),
+        restricciones={},
+    )
+
+
+def _entrada_desde_borrador(args: argparse.Namespace) -> EntradaContenido:
+    if not args.id_entrada:
+        raise ValueError("--id-entrada es obligatorio cuando se usa --borrador.")
+    return EntradaContenido(
+        id_entrada=args.id_entrada,
+        tipo_entrada=TipoEntrada.BORRADOR_EXISTENTE,
+        texto_base=args.borrador,
+        intencion_editorial=IntencionEditorial(
+            estado_intencion_editorial=EstadoIntencionEditorial.TENTATIVA,
+            idea_central=args.borrador.strip()[:280],
+        ),
+        perfil_narrativo=PerfilNarrativoReferencia(id_perfil=args.perfil),
+        canales_destino=["linkedin"],
+        metadatos_origen={"referencia_fuente": f"borrador_{args.id_entrada}"},
         estado_privacidad=EstadoPrivacidad(sanitizado=True),
         restricciones={},
     )
@@ -169,33 +224,54 @@ def _evidencia_ejecucion_inicial(args: argparse.Namespace, entrada, adapter) -> 
     return {clave: valor for clave, valor in evidencia.items() if valor is not None}
 
 
-def _mostrar_sesion(sesion) -> None:
+def _mostrar_sesion_cliente(sesion) -> None:
     version = next(item for item in sesion.versiones if item.numero == sesion.version_actual)
-    print(f"Entrada: {sesion.id_entrada}")
-    print(f"Fuente: {sesion.entrada.tipo_entrada.value}")
+    print(f"Canal: linkedin")
+    print(f"Fuente: {sesion.entrada.tipo_entrada.value.replace('_', ' ')}")
     print(f"Versión: v{version.numero:03d}")
-    print(f"Idea usada: {version.idea_central}")
-    if len(version.ideas_candidatas) > 1:
-        print(f"Ideas candidatas: {len(version.ideas_candidatas)}")
     intencion = (
         sesion.entrada.intencion_editorial.objetivo_del_post
         or sesion.entrada.intencion_editorial.estado_intencion_editorial.value
     )
     print(f"Intención: {intencion}")
     print(f"Perfil: {sesion.entrada.perfil_narrativo.id_perfil}")
-    estado_tecnico = (sesion.evidencia_ejecucion or {}).get("estado_tecnico", "NO_REGISTRADO")
-    decision_humana = sesion.aprobacion.estado.value if sesion.aprobacion else "pendiente"
-    print(f"Validación técnica: {estado_tecnico}")
-    print(f"Validación estructural: {version.diagnostico_editorial.compliance.value}")
-    print(f"Evaluación editorial automática: {version.diagnostico_editorial.estado_revision.value}")
-    print(f"Decisión humana: {decision_humana}")
     estados_legibles = {
         "pendiente_revision": "pendiente de revisión",
         "requiere_ajustes": "requiere ajustes",
     }
     print(f"Estado editorial: {estados_legibles.get(sesion.estado.value, sesion.estado.value)}")
+    print("Observación editorial: requiere revisión humana antes de preparar una salida.")
+    print("Acciones disponibles: aprobar, ajustar o rechazar.")
     print("\nBorrador:\n")
     print(version.texto)
+
+
+def _mostrar_sesion_administrador(sesion) -> None:
+    version = next(item for item in sesion.versiones if item.numero == sesion.version_actual)
+    _mostrar_sesion_cliente(sesion)
+    print("\nAdministración:")
+    print(f"Entrada: {sesion.id_entrada}")
+    print(f"Idea usada: {version.idea_central}")
+    print(f"Perfil: {sesion.entrada.perfil_narrativo.id_perfil}")
+    print(f"Validación técnica: {(sesion.evidencia_ejecucion or {}).get('estado_tecnico', 'NO_REGISTRADO')}")
+    print(f"Validación estructural: {version.diagnostico_editorial.compliance.value}")
+    print(f"Evaluación editorial automática: {version.diagnostico_editorial.estado_revision.value}")
+    print(f"Decisión humana: {sesion.aprobacion.estado.value if sesion.aprobacion else 'pendiente'}")
+    print(f"Trazabilidad: {version.trazabilidad_fuente or {}}")
+    print(f"Evidencia: {sesion.evidencia_ejecucion or {}}")
+
+
+def _mostrar_sesion(sesion, vista: str) -> None:
+    if vista == "administrador":
+        _mostrar_sesion_administrador(sesion)
+    else:
+        _mostrar_sesion_cliente(sesion)
+
+
+def _construir_publisher(args: argparse.Namespace):
+    if args.publisher == "external-dry-run":
+        return ExternalDryRunPublisher(base_dir=args.output_dir)
+    return LocalDraftPublisher(base_dir=args.output_dir)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -231,9 +307,17 @@ def main(argv: list[str] | None = None) -> int:
 
         store = FilesystemEditorialSessionStore(args.output_dir)
         if args.accion == "generar":
-            if not args.input_json and not args.texto:
-                raise ValueError("Debes indicar --input-json o --texto para generar.")
-            entrada = _leer_entrada(args.input_json) if args.input_json else _entrada_desde_texto(args)
+            if not args.input_json and not args.texto and not args.documento and not args.borrador:
+                raise ValueError("Debes indicar --input-json, --texto, --documento o --borrador para generar.")
+            entrada = (
+                _leer_entrada(args.input_json)
+                if args.input_json
+                else _entrada_desde_documento(args)
+                if args.documento
+                else _entrada_desde_borrador(args)
+                if args.borrador
+                else _entrada_desde_texto(args)
+            )
             adapter = construir_model_adapter()
             evidencia_ejecucion = _evidencia_ejecucion_inicial(args, entrada, adapter)
             inicio = time.monotonic()
@@ -263,7 +347,7 @@ def main(argv: list[str] | None = None) -> int:
             )
             sesion.evidencia_ejecucion = evidencia_ejecucion
             store.save(sesion)
-            _mostrar_sesion(sesion)
+            _mostrar_sesion(sesion, args.vista)
             return 0
 
         if not args.id_entrada:
@@ -277,7 +361,7 @@ def main(argv: list[str] | None = None) -> int:
                 profile_resolver,
                 channel_strategy,
             )
-            _mostrar_sesion(sesion)
+            _mostrar_sesion(sesion, args.vista)
             return 0
         if args.accion == "aprobar":
             if not args.version or not args.revisor:
@@ -310,9 +394,9 @@ def main(argv: list[str] | None = None) -> int:
         manifest = preparar_salida_aprobada(
             args.id_entrada,
             store,
-            LocalDraftPublisher(base_dir=args.output_dir),
+            _construir_publisher(args),
         )
-        print(f"LocalDraft preparado para {manifest.id_entrada}.")
+        print(f"Salida local preparada para {manifest.id_entrada}: {manifest.id_evidencia}.")
         return 0
     except (OSError, json.JSONDecodeError, ValidationError, ValueError, LiteLLMAdapterError) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)

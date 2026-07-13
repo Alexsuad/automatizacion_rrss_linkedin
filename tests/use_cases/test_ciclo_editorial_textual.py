@@ -15,6 +15,7 @@ from linkedin_content_system.contracts import (
     EstadoRevision,
 )
 from linkedin_content_system.publishers import LocalDraftPublisher
+from linkedin_content_system.publishers import ExternalDryRunPublisher
 from linkedin_content_system.use_cases.ciclo_editorial_textual import (
     FilesystemEditorialSessionStore,
     aprobar_version,
@@ -249,3 +250,74 @@ def test_ajustes_registran_transicion_real_en_historial(tmp_path, entrada_editor
         EstadoCicloEditorial.REQUIERE_AJUSTES,
         EstadoCicloEditorial.PENDIENTE_REVISION,
     ]
+
+
+def test_documento_y_borrador_usan_el_mismo_ciclo_y_guardan_trazabilidad(tmp_path, entrada_editorial):
+    for tipo in (TipoEntrada.DOCUMENTO_BASE, TipoEntrada.BORRADOR_EXISTENTE):
+        entrada = entrada_editorial.model_copy(
+            update={
+                "id_entrada": f"in_{tipo.value}",
+                "tipo_entrada": tipo,
+                "metadatos_origen": {
+                    "referencia_fuente": f"fixture_{tipo.value}",
+                    "hechos_autorizados": ["La revisión humana precede a la salida."],
+                },
+            }
+        )
+        sesion = generar_borrador_pendiente(entrada, ControlledModelAdapter(), FilesystemEditorialSessionStore(tmp_path))
+
+        assert sesion.versiones[0].trazabilidad_fuente["tipo_entrada"] == tipo.value
+        assert sesion.versiones[0].trazabilidad_fuente["hechos_explicitos"]
+
+
+def test_dos_regeneraciones_es_el_limite_y_luego_requiere_atencion(tmp_path, entrada_editorial):
+    store = FilesystemEditorialSessionStore(tmp_path)
+    generar_borrador_pendiente(entrada_editorial, ControlledModelAdapter(), store)
+    solicitar_ajustes(entrada_editorial.id_entrada, "Hazlo más breve.", ControlledModelAdapter(), store)
+    solicitar_ajustes(entrada_editorial.id_entrada, "Hazlo más directo.", ControlledModelAdapter(), store)
+
+    sesion = solicitar_ajustes(entrada_editorial.id_entrada, "Una tercera iteración no procede.", ControlledModelAdapter(), store)
+
+    assert len(sesion.versiones) == 3
+    assert sesion.estado == EstadoCicloEditorial.REQUIERE_ATENCION
+
+
+def test_aprobado_puede_preparar_external_dry_run_sin_publicar(tmp_path, entrada_editorial):
+    store = FilesystemEditorialSessionStore(tmp_path)
+    generar_borrador_pendiente(entrada_editorial, ControlledModelAdapter(), store)
+    aprobar_version(
+        entrada_editorial.id_entrada, 1, "Revisor Sintetico", "2026-07-13T10:00:00Z", store,
+        tipo_aprobacion=TipoAprobacion.REFORZADA,
+        motivo_revision_reforzada="Revisión humana explícita.",
+    )
+
+    manifest = preparar_salida_aprobada(
+        entrada_editorial.id_entrada, store, ExternalDryRunPublisher(str(tmp_path))
+    )
+
+    payload = tmp_path / f"external_dryrun_{entrada_editorial.id_entrada}" / "publicacion_simulada.json"
+    assert manifest.id_entrada == entrada_editorial.id_entrada
+    assert '"no_publicado_realmente": true' in payload.read_text(encoding="utf-8")
+
+
+def test_revisor_inyectado_evalua_sin_aprobar_la_sesion(tmp_path, entrada_editorial):
+    from linkedin_content_system.use_cases.revisar_candidata_editorial import RevisorEditorialConservador
+
+    class SpyReviewer:
+        def __init__(self):
+            self.invocado = False
+            self.base = RevisorEditorialConservador()
+
+        def revisar(self, **kwargs):
+            self.invocado = True
+            return self.base.revisar(**kwargs)
+
+    revisor = SpyReviewer()
+    sesion = generar_borrador_pendiente(
+        entrada_editorial, ControlledModelAdapter(), FilesystemEditorialSessionStore(tmp_path), revisor=revisor
+    )
+
+    assert revisor.invocado is True
+    assert sesion.aprobacion is None
+    assert sesion.estado == EstadoCicloEditorial.PENDIENTE_REVISION
+    assert sesion.versiones[0].trazabilidad_fuente["perfil_estado_completitud"] == "fallback"

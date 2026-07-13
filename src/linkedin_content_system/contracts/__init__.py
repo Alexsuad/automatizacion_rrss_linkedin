@@ -32,3 +32,4 @@ from .ciclo_editorial import (
     TransicionEstadoEditorial,
     VersionBorradorEditorial,
 )
+from .fuente_normalizada import FuenteTextualNormalizada

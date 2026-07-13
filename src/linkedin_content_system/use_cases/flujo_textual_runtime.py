@@ -17,6 +17,15 @@ class PerfilNarrativoRuntime:
     palabras_clave: tuple[str, ...] = ()
     frases_prohibidas: tuple[str, ...] = ()
     cta_preferidos: tuple[str, ...] = ()
+    nivel_tecnico: str = "moderado"
+    nivel_opinion_personal: str = "prudente"
+    temas_permitidos: tuple[str, ...] = ()
+    temas_prohibidos: tuple[str, ...] = ()
+    experiencias_autorizadas: tuple[str, ...] = ()
+    afirmaciones_sostenibles: tuple[str, ...] = ()
+    ejemplos_si_suena: tuple[str, ...] = ()
+    ejemplos_no_suena: tuple[str, ...] = ()
+    estado_completitud: str = "fallback"
 
 
 @dataclass(frozen=True)
@@ -66,6 +75,7 @@ def _build_fallback_profile(id_perfil: str) -> PerfilNarrativoRuntime:
         ),
         tono_prohibido="Promesas grandilocuentes, autoridad fingida y engagement artificial.",
         cta_preferidos=("pregunta final concreta",),
+        estado_completitud="fallback",
     )
 
 
@@ -110,6 +120,8 @@ class FilesystemNarrativeProfileResolver:
         voz = data.get("voz_marca") or {}
         lenguaje = data.get("lenguaje") or {}
         cta = data.get("cta") or {}
+        limites = data.get("limites") or {}
+        ejemplos = data.get("ejemplos") or {}
 
         tono_base = ((voz.get("tono_base") or {}).get("descripcion") or "").strip()
         tono_prohibido = ((voz.get("tono_prohibido") or {}).get("descripcion") or "").strip()
@@ -122,6 +134,15 @@ class FilesystemNarrativeProfileResolver:
             + _string_tuple((lenguaje.get("expresiones_propias") or [])),
             frases_prohibidas=_string_tuple(lenguaje.get("frases_prohibidas")),
             cta_preferidos=_string_tuple(cta.get("cta_preferidos")),
+            nivel_tecnico=str(data.get("nivel_tecnico") or "moderado").strip(),
+            nivel_opinion_personal=str(data.get("nivel_opinion_personal") or "prudente").strip(),
+            temas_permitidos=_string_tuple(data.get("temas_permitidos")),
+            temas_prohibidos=_string_tuple(data.get("temas_prohibidos")),
+            experiencias_autorizadas=_string_tuple(data.get("experiencias_autorizadas")),
+            afirmaciones_sostenibles=_string_tuple(data.get("afirmaciones_sostenibles")),
+            ejemplos_si_suena=_string_tuple(data.get("ejemplos_si_suena") or ejemplos.get("si_suena")),
+            ejemplos_no_suena=_string_tuple(data.get("ejemplos_no_suena") or ejemplos.get("no_suena")),
+            estado_completitud=str(data.get("estado_completitud") or limites.get("estado_completitud") or "parcial").strip(),
         )
 
 
@@ -156,14 +177,36 @@ class LinkedInTextChannelStrategy:
             lineas_prompt.append(f"CTA deseado: {entrada.intencion_editorial.cta_intencionado}")
         if perfil.palabras_clave:
             lineas_prompt.append(f"Palabras o expresiones propias: {', '.join(perfil.palabras_clave)}")
+        metadata = entrada.metadatos_origen or {}
+        for clave, etiqueta in (
+            ("hechos_autorizados", "Hechos autorizados"),
+            ("opiniones_explicitas", "Opiniones explícitas"),
+            ("experiencias_autorizadas", "Experiencias autorizadas"),
+            ("instrucciones_editoriales", "Instrucciones editoriales"),
+            ("no_inferir", "No inferir"),
+        ):
+            valores = _string_tuple(metadata.get(clave))
+            if valores:
+                lineas_prompt.append(f"{etiqueta}: {', '.join(valores)}")
+        if perfil.experiencias_autorizadas:
+            lineas_prompt.append(
+                f"Experiencias autorizadas por perfil: {', '.join(perfil.experiencias_autorizadas)}"
+            )
+        if perfil.afirmaciones_sostenibles:
+            lineas_prompt.append(
+                f"Afirmaciones sostenibles por perfil: {', '.join(perfil.afirmaciones_sostenibles)}"
+            )
 
         lineas_prompt.append(
             "Escribe un borrador breve, claro y revisable para LinkedIn sin inventar experiencia ni claims."
         )
         lineas_prompt.extend(
             [
+                "Mantén la salida entre 80 y 120 palabras, con un máximo de 3 párrafos cortos.",
                 "Contrato de salida obligatorio: Devuelve exclusivamente el post candidato listo para revisión.",
-                "No incluyas análisis, revisión inicial, notas editoriales, explicaciones, títulos de sección ni metatexto.",
+                "No incluyas análisis, revisión inicial, notas editoriales, explicaciones, títulos de sección ni metatexto visible.",
+                "No añadas preámbulos como 'Aquí tienes un borrador del post' ni frases equivalentes.",
+                "No afirmes experiencias personales en primera persona salvo que estén explícitas en el texto base.",
                 "Completa la última oración y termina el post con puntuación final.",
             ]
         )
@@ -181,7 +224,15 @@ class LinkedInTextChannelStrategy:
             system_parts.append(
                 f"CTA preferidos: {', '.join(perfil.cta_preferidos)}"
             )
-        system_parts.append("Si faltan datos, mantén el texto prudente y no inventes autoridad.")
+        if perfil.temas_prohibidos:
+            system_parts.append(f"Temas prohibidos: {', '.join(perfil.temas_prohibidos)}")
+        if perfil.ejemplos_si_suena:
+            system_parts.append(f"Ejemplos que sí suenan: {' | '.join(perfil.ejemplos_si_suena)}")
+        if perfil.ejemplos_no_suena:
+            system_parts.append(f"Ejemplos que no suenan: {' | '.join(perfil.ejemplos_no_suena)}")
+        system_parts.append(
+            "Si faltan datos, mantén el texto prudente y no inventes autoridad, experiencia personal ni recuerdos."
+        )
 
         return SolicitudGeneracionTextual(
             canal_destino=self.canal_destino,

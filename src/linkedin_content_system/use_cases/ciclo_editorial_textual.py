@@ -24,10 +24,13 @@ from linkedin_content_system.contracts import (
 from linkedin_content_system.flows import ensamblar_flujo_local_simulado
 from linkedin_content_system.publishers import PublicationPublisherPort
 from linkedin_content_system.use_cases.ejecutar_flujo_textual import generar_candidato_textual
+from linkedin_content_system.use_cases.normalizar_entrada_textual import normalizar_entrada_textual
 from linkedin_content_system.use_cases.flujo_textual_runtime import (
+    FilesystemNarrativeProfileResolver,
     NarrativeProfileResolver,
     TextChannelStrategy,
 )
+from linkedin_content_system.use_cases.revisar_candidata_editorial import RevisorEditorial
 from linkedin_content_system.use_cases.generar_borrador_local import (
     generar_borrador_local_desde_simulacion,
 )
@@ -44,14 +47,17 @@ _TRANSICIONES_VALIDAS = {
         EstadoCicloEditorial.REQUIERE_AJUSTES,
         EstadoCicloEditorial.APROBADO,
         EstadoCicloEditorial.RECHAZADO,
+        EstadoCicloEditorial.REQUIERE_ATENCION,
     },
     EstadoCicloEditorial.REQUIERE_AJUSTES: {
         EstadoCicloEditorial.PENDIENTE_REVISION,
         EstadoCicloEditorial.RECHAZADO,
+        EstadoCicloEditorial.REQUIERE_ATENCION,
     },
     EstadoCicloEditorial.APROBADO: {EstadoCicloEditorial.PREPARADO},
     EstadoCicloEditorial.RECHAZADO: set(),
     EstadoCicloEditorial.PREPARADO: set(),
+    EstadoCicloEditorial.REQUIERE_ATENCION: set(),
 }
 
 
@@ -153,9 +159,13 @@ def generar_borrador_pendiente(
     channel_strategy: TextChannelStrategy | None = None,
     clock: Callable[[], str] | None = None,
     evidencia_ejecucion: dict[str, object] | None = None,
+    revisor: RevisorEditorial | None = None,
 ) -> SesionEditorial:
+    fuente = normalizar_entrada_textual(entrada)
+    resolver = profile_resolver or FilesystemNarrativeProfileResolver()
+    perfil = resolver.resolve(entrada.perfil_narrativo.id_perfil)
     post, diagnostico, idea = generar_candidato_textual(
-        entrada, adapter, profile_resolver, channel_strategy
+        entrada, adapter, resolver, channel_strategy, revisor
     )
     version = VersionBorradorEditorial(
         numero=1,
@@ -164,6 +174,16 @@ def generar_borrador_pendiente(
         ideas_candidatas=idea.ideas_candidatas,
         diagnostico_editorial=diagnostico,
         creada_en=_now(clock),
+        trazabilidad_fuente={
+            "tipo_entrada": fuente.tipo_entrada.value,
+            "referencia_fuente": fuente.referencia_fuente,
+            "hash_contenido": fuente.hash_contenido,
+            "hechos_explicitos": fuente.hechos_explicitos,
+            "experiencias_autorizadas": fuente.experiencias_autorizadas,
+            "no_inferir": fuente.no_inferir,
+            "perfil_id": perfil.id_perfil,
+            "perfil_estado_completitud": perfil.estado_completitud,
+        },
     )
     sesion = SesionEditorial(
         id_entrada=entrada.id_entrada,
@@ -192,9 +212,19 @@ def solicitar_ajustes(
     profile_resolver: NarrativeProfileResolver | None = None,
     channel_strategy: TextChannelStrategy | None = None,
     clock: Callable[[], str] | None = None,
+    revisor: RevisorEditorial | None = None,
 ) -> SesionEditorial:
     feedback_limpio = _validar_texto_controlado(feedback, "feedback")
     sesion = store.load(id_entrada)
+    if len(sesion.versiones) >= 3:
+        _transicionar(
+            sesion,
+            EstadoCicloEditorial.REQUIERE_ATENCION,
+            clock=clock,
+            motivo="Se alcanzó el máximo de dos regeneraciones; requiere intervención humana.",
+        )
+        store.save(sesion)
+        return sesion
     _transicionar(
         sesion,
         EstadoCicloEditorial.REQUIERE_AJUSTES,
@@ -213,9 +243,19 @@ def solicitar_ajustes(
             )
             return adapter.generar_texto(prompt_revision, system_instruction)
 
-    post, diagnostico, idea = generar_candidato_textual(
-        sesion.entrada, _FeedbackAdapter(), profile_resolver, channel_strategy
-    )
+    try:
+        post, diagnostico, idea = generar_candidato_textual(
+            sesion.entrada, _FeedbackAdapter(), profile_resolver, channel_strategy, revisor
+        )
+    except ValueError:
+        _transicionar(
+            sesion,
+            EstadoCicloEditorial.REQUIERE_ATENCION,
+            clock=clock,
+            motivo="La regeneración no superó los gates; requiere intervención humana.",
+        )
+        store.save(sesion)
+        raise
     numero = anterior.numero + 1
     sesion.versiones.append(
         VersionBorradorEditorial(

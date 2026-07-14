@@ -14,6 +14,8 @@ class FuenteTextualNormalizada(BaseModel):
         TipoEntrada.TEXTO_MANUAL,
         TipoEntrada.DOCUMENTO_BASE,
         TipoEntrada.BORRADOR_EXISTENTE,
+        TipoEntrada.AUDIO,
+        TipoEntrada.TRANSCRIPCION,
     ]
     referencia_fuente: str
     hash_contenido: str

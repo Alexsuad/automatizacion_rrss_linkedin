@@ -39,3 +39,12 @@ from .auditoria_editorial import (
     HallazgoEditorial,
     SeveridadHallazgoEditorial,
 )
+from .audio_transcripcion import (
+    EstadoCompletitudTranscripcion,
+    MetadatosAudioLocal,
+    ModoTranscripcion,
+    ResultadoSanitizacionTranscripcion,
+    ResultadoTranscripcion,
+    ResultadoValidacionAudio,
+    SegmentoTranscripcion,
+)

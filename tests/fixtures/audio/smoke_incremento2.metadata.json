@@ -1,0 +1,20 @@
+{
+  "referencia_fuente": "audio_smoke_incremento2",
+  "hechos_autorizados": [
+    "La revision humana precede a cualquier salida."
+  ],
+  "opiniones_explicitas": [
+    "Automatizar sin revisar es un error."
+  ],
+  "experiencias_autorizadas": [],
+  "instrucciones_editoriales": [
+    "No atribuir la cita del mentor como experiencia propia."
+  ],
+  "afirmaciones_pendientes": [
+    "La cifra 300% queda pendiente de verificacion."
+  ],
+  "no_inferir": [
+    "No atribuir resultados de negocio.",
+    "No convertir la cita del mentor en experiencia del cliente."
+  ]
+}

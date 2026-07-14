@@ -70,6 +70,7 @@ def test_cli_help():
     assert result.returncode == 0
     assert "input-json" in result.stdout
     assert "--texto" in result.stdout
+    assert "--audio" in result.stdout
 
 
 def test_cli_aprobado_genera_localdraft(tmp_path):
@@ -430,6 +431,83 @@ def test_cli_ciclo_completo_ajusta_aprueba_y_prepara(tmp_path):
 
     assert (tmp_path / "editorial_in_cli_ciclo_001" / "versiones" / "v002.md").exists()
     assert (tmp_path / "localdraft_in_cli_ciclo_001" / "post.md").exists()
+
+
+def test_cli_audio_genera_borrador_pendiente_con_transcripcion_fake(tmp_path):
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "linkedin_content_system.cli.flujo_textual",
+            "--audio",
+            "tests/fixtures/audio/smoke_incremento2.wav",
+            "--metadata-json",
+            "tests/fixtures/audio/smoke_incremento2.metadata.json",
+            "--transcriber",
+            "fake",
+            "--id-entrada",
+            "audio_cli_001",
+            "--perfil",
+            "perfil_audio",
+            "--output-dir",
+            str(tmp_path),
+        ],
+        capture_output=True,
+        text=True,
+        env=_cli_env(),
+    )
+
+    assert result.returncode == 0
+    assert "pendiente de revisión" in result.stdout.lower()
+    assert "transcripción:" in result.stdout.lower()
+    assert (tmp_path / "editorial_audio_cli_001" / "sesion.json").exists()
+    assert not (tmp_path / "localdraft_audio_cli_001").exists()
+
+
+def test_cli_audio_rechaza_combinar_otra_entrada(tmp_path):
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "linkedin_content_system.cli.flujo_textual",
+            "--audio",
+            "tests/fixtures/audio/smoke_incremento2.wav",
+            "--texto",
+            "texto incompatible",
+            "--output-dir",
+            str(tmp_path),
+        ],
+        capture_output=True,
+        text=True,
+        env=_cli_env(),
+    )
+
+    assert result.returncode != 0
+    assert "not allowed with argument" in result.stderr.lower() or "no se permite" in result.stderr.lower()
+
+
+def test_cli_audio_sanea_error_si_falta_archivo(tmp_path):
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "linkedin_content_system.cli.flujo_textual",
+            "--audio",
+            "tests/fixtures/audio/no_existe.wav",
+            "--transcriber",
+            "fake",
+            "--output-dir",
+            str(tmp_path),
+        ],
+        capture_output=True,
+        text=True,
+        env=_cli_env(),
+    )
+
+    assert result.returncode == 1
+    assert "ERROR:" in result.stderr
+    assert "archivo de audio no existe" in result.stderr
+    assert "Traceback" not in result.stderr
 
 
 def test_cli_no_anuncia_aprobacion_simple_si_la_version_requiere_refuerzo(tmp_path):

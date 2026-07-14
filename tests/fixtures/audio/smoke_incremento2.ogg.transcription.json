@@ -1,0 +1,21 @@
+{
+  "audio_sha256": "f77396f30b26d2adefb267967e6fbd4147fac9d57824027cde135cc36a2f0e23",
+  "idioma": "es",
+  "texto": "La revision humana precede a cualquier salida. Creo que automatizar sin revisar es un error.",
+  "segmentos": [
+    {
+      "indice": 1,
+      "inicio_segundos": 0.0,
+      "fin_segundos": 0.5,
+      "texto": "La revision humana precede a cualquier salida."
+    },
+    {
+      "indice": 2,
+      "inicio_segundos": 0.5,
+      "fin_segundos": 1.0,
+      "texto": "Creo que automatizar sin revisar es un error."
+    }
+  ],
+  "advertencias": [],
+  "estado_completitud": "completa"
+}

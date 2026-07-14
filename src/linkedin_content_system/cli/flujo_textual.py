@@ -21,6 +21,10 @@ from linkedin_content_system.contracts import (
     PerfilNarrativoReferencia,
     TipoEntrada,
 )
+from linkedin_content_system.transcription import (
+    TranscriptionAdapterError,
+    construir_transcriber,
+)
 from linkedin_content_system.publishers import ExternalDryRunPublisher, LocalDraftPublisher
 from linkedin_content_system.use_cases.flujo_textual_runtime import (
     FilesystemNarrativeProfileResolver,
@@ -34,6 +38,8 @@ from linkedin_content_system.use_cases import (
     preparar_salida_aprobada,
     rechazar_version,
     solicitar_ajustes,
+    cargar_metadatos_autorizados,
+    construir_entrada_desde_audio,
 )
 from linkedin_content_system.use_cases.normalizar_entrada_textual import cargar_documento_textual
 
@@ -45,6 +51,7 @@ def _build_parser() -> argparse.ArgumentParser:
     entrada.add_argument("--texto", help="Texto manual para generar sin preparar JSON.")
     entrada.add_argument("--documento", help="Documento .txt o .md para normalizar localmente.")
     entrada.add_argument("--borrador", help="Borrador existente para revisar y mejorar.")
+    entrada.add_argument("--audio", help="Archivo de audio local que debe transcribirse antes de generar.")
     parser.add_argument("--output-dir", required=True, help="Directorio base donde se guardara el LocalDraft.")
     parser.add_argument(
         "--accion",
@@ -54,6 +61,17 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--id-entrada", help="Identificador seguro de la entrada o sesión.")
     parser.add_argument("--perfil", default="perfil_default", help="Identificador del perfil narrativo.")
+    parser.add_argument("--metadata-json", help="JSON con metadatos autorizados y evidencia estructurada.")
+    parser.add_argument("--idioma", help="Idioma declarado para la transcripción local.")
+    parser.add_argument(
+        "--transcriber",
+        choices=["fake", "whisper_cpp"],
+        help="Adaptador de transcripción local para entradas de audio.",
+    )
+    parser.add_argument("--audiencia", help="Audiencia objetivo opcional para la intención editorial.")
+    parser.add_argument("--objetivo-post", help="Objetivo editorial opcional.")
+    parser.add_argument("--idea-central", help="Idea central opcional.")
+    parser.add_argument("--cta", help="CTA intencionado opcional.")
     parser.add_argument(
         "--vista",
         choices=["cliente", "administrador"],
@@ -133,12 +151,10 @@ def _entrada_desde_texto(args: argparse.Namespace) -> EntradaContenido:
         id_entrada=args.id_entrada,
         tipo_entrada=TipoEntrada.TEXTO_MANUAL,
         texto_base=args.texto,
-        intencion_editorial=IntencionEditorial(
-            estado_intencion_editorial=EstadoIntencionEditorial.TENTATIVA,
-            idea_central=args.texto.strip()[:280],
-        ),
+        intencion_editorial=_intencion_desde_args(args, args.texto.strip()[:280]),
         perfil_narrativo=PerfilNarrativoReferencia(id_perfil=args.perfil),
         canales_destino=["linkedin"],
+        metadatos_origen=cargar_metadatos_autorizados(args.metadata_json),
         estado_privacidad=EstadoPrivacidad(sanitizado=True),
         restricciones={},
     )
@@ -152,13 +168,13 @@ def _entrada_desde_documento(args: argparse.Namespace) -> EntradaContenido:
         id_entrada=args.id_entrada,
         tipo_entrada=TipoEntrada.DOCUMENTO_BASE,
         texto_base=contenido,
-        intencion_editorial=IntencionEditorial(
-            estado_intencion_editorial=EstadoIntencionEditorial.TENTATIVA,
-            idea_central=contenido.strip()[:280],
-        ),
+        intencion_editorial=_intencion_desde_args(args, contenido.strip()[:280]),
         perfil_narrativo=PerfilNarrativoReferencia(id_perfil=args.perfil),
         canales_destino=["linkedin"],
-        metadatos_origen={"referencia_fuente": f"documento_{args.id_entrada}"},
+        metadatos_origen={
+            "referencia_fuente": f"documento_{args.id_entrada}",
+            **cargar_metadatos_autorizados(args.metadata_json),
+        },
         estado_privacidad=EstadoPrivacidad(sanitizado=True),
         restricciones={},
     )
@@ -171,16 +187,42 @@ def _entrada_desde_borrador(args: argparse.Namespace) -> EntradaContenido:
         id_entrada=args.id_entrada,
         tipo_entrada=TipoEntrada.BORRADOR_EXISTENTE,
         texto_base=args.borrador,
-        intencion_editorial=IntencionEditorial(
-            estado_intencion_editorial=EstadoIntencionEditorial.TENTATIVA,
-            idea_central=args.borrador.strip()[:280],
-        ),
+        intencion_editorial=_intencion_desde_args(args, args.borrador.strip()[:280]),
         perfil_narrativo=PerfilNarrativoReferencia(id_perfil=args.perfil),
         canales_destino=["linkedin"],
-        metadatos_origen={"referencia_fuente": f"borrador_{args.id_entrada}"},
+        metadatos_origen={
+            "referencia_fuente": f"borrador_{args.id_entrada}",
+            **cargar_metadatos_autorizados(args.metadata_json),
+        },
         estado_privacidad=EstadoPrivacidad(sanitizado=True),
         restricciones={},
     )
+
+
+def _intencion_desde_args(args: argparse.Namespace, idea_por_defecto: str) -> IntencionEditorial:
+    return IntencionEditorial(
+        estado_intencion_editorial=EstadoIntencionEditorial.TENTATIVA,
+        audiencia_objetivo=args.audiencia,
+        objetivo_del_post=args.objetivo_post,
+        idea_central=args.idea_central or idea_por_defecto,
+        cta_intencionado=args.cta,
+    )
+
+
+def _entrada_desde_audio(args: argparse.Namespace):
+    transcriber = construir_transcriber(args.transcriber)
+    preparacion = construir_entrada_desde_audio(
+        audio_path=args.audio,
+        transcriber=transcriber,
+        profile_id=args.perfil,
+        id_entrada=args.id_entrada,
+        canales_destino=["linkedin"],
+        language=args.idioma,
+        intencion_editorial=_intencion_desde_args(args, "Transcripción local pendiente de revisión"),
+        metadatos_autorizados=cargar_metadatos_autorizados(args.metadata_json),
+        restricciones={},
+    )
+    return preparacion
 
 
 def _sha256_file(path: str | None) -> str | None:
@@ -224,6 +266,24 @@ def _evidencia_ejecucion_inicial(args: argparse.Namespace, entrada, adapter) -> 
     return {clave: valor for clave, valor in evidencia.items() if valor is not None}
 
 
+def _evidencia_audio(preparacion_audio) -> dict[str, object]:
+    return {
+        "audio_sha256": preparacion_audio.validacion.audio.sha256_audio,
+        "audio_nombre_logico": preparacion_audio.validacion.audio.nombre_logico,
+        "audio_extension": preparacion_audio.validacion.audio.extension,
+        "audio_tamano_bytes": preparacion_audio.validacion.audio.tamano_bytes,
+        "audio_duracion_segundos": preparacion_audio.validacion.audio.duracion_segundos,
+        "transcripcion_adapter": preparacion_audio.transcripcion.adaptador,
+        "transcripcion_modo": preparacion_audio.transcripcion.modo.value,
+        "transcripcion_modelo": preparacion_audio.transcripcion.modelo,
+        "transcripcion_idioma": preparacion_audio.transcripcion.idioma,
+        "transcripcion_estado": preparacion_audio.transcripcion.estado_completitud.value,
+        "transcripcion_sha256": preparacion_audio.sanitizacion.sha256_transcripcion_sanitizada,
+        "transcripcion_transformaciones": preparacion_audio.sanitizacion.transformaciones,
+        "transcripcion_advertencias": preparacion_audio.sanitizacion.advertencias,
+    }
+
+
 def _mostrar_sesion_cliente(sesion) -> None:
     version = next(item for item in sesion.versiones if item.numero == sesion.version_actual)
     print(f"Canal: linkedin")
@@ -235,6 +295,11 @@ def _mostrar_sesion_cliente(sesion) -> None:
     )
     print(f"Intención: {intencion}")
     print(f"Perfil: {sesion.entrada.perfil_narrativo.id_perfil}")
+    evidencia = sesion.evidencia_ejecucion or {}
+    if evidencia.get("transcripcion_adapter"):
+        print(
+            f"Transcripción: {evidencia.get('transcripcion_adapter')} ({evidencia.get('transcripcion_modo', 'desconocido')})"
+        )
     estados_legibles = {
         "pendiente_revision": "pendiente de revisión",
         "requiere_ajustes": "requiere ajustes",
@@ -311,11 +376,14 @@ def main(argv: list[str] | None = None) -> int:
 
         store = FilesystemEditorialSessionStore(args.output_dir)
         if args.accion == "generar":
-            if not args.input_json and not args.texto and not args.documento and not args.borrador:
-                raise ValueError("Debes indicar --input-json, --texto, --documento o --borrador para generar.")
+            if not args.input_json and not args.texto and not args.documento and not args.borrador and not args.audio:
+                raise ValueError("Debes indicar --input-json, --texto, --documento, --borrador o --audio para generar.")
+            preparacion_audio = _entrada_desde_audio(args) if args.audio else None
             entrada = (
                 _leer_entrada(args.input_json)
                 if args.input_json
+                else preparacion_audio.entrada
+                if args.audio
                 else _entrada_desde_documento(args)
                 if args.documento
                 else _entrada_desde_borrador(args)
@@ -324,6 +392,8 @@ def main(argv: list[str] | None = None) -> int:
             )
             adapter = construir_model_adapter()
             evidencia_ejecucion = _evidencia_ejecucion_inicial(args, entrada, adapter)
+            if preparacion_audio is not None:
+                evidencia_ejecucion.update(_evidencia_audio(preparacion_audio))
             inicio = time.monotonic()
             sesion = generar_borrador_pendiente(
                 entrada=entrada,
@@ -402,7 +472,14 @@ def main(argv: list[str] | None = None) -> int:
         )
         print(f"Salida local preparada para {manifest.id_entrada}: {manifest.id_evidencia}.")
         return 0
-    except (OSError, json.JSONDecodeError, ValidationError, ValueError, LiteLLMAdapterError) as exc:
+    except (
+        OSError,
+        json.JSONDecodeError,
+        ValidationError,
+        ValueError,
+        LiteLLMAdapterError,
+        TranscriptionAdapterError,
+    ) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1
 

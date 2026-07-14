@@ -38,7 +38,16 @@ def _entrada(tipo=TipoEntrada.TEXTO_MANUAL, texto="Un hecho verificable mejora u
     )
 
 
-@pytest.mark.parametrize("tipo", [TipoEntrada.TEXTO_MANUAL, TipoEntrada.DOCUMENTO_BASE, TipoEntrada.BORRADOR_EXISTENTE])
+@pytest.mark.parametrize(
+    "tipo",
+    [
+        TipoEntrada.TEXTO_MANUAL,
+        TipoEntrada.DOCUMENTO_BASE,
+        TipoEntrada.BORRADOR_EXISTENTE,
+        TipoEntrada.AUDIO,
+        TipoEntrada.TRANSCRIPCION,
+    ],
+)
 def test_las_tres_entradas_textuales_comparten_normalizacion(tipo):
     entrada = _entrada(tipo)
 
@@ -49,6 +58,25 @@ def test_las_tres_entradas_textuales_comparten_normalizacion(tipo):
     assert fuente.hechos_explicitos == ["El equipo revisa cada candidata antes de aprobarla."]
     assert fuente.experiencias_autorizadas == ["He observado revisiones humanas en el flujo."]
     assert fuente.hash_contenido == hashlib.sha256(entrada.texto_base.encode("utf-8")).hexdigest()
+
+
+def test_normalizacion_audio_conserva_segmentos_con_timestamps():
+    entrada = _entrada(TipoEntrada.AUDIO, "La revision humana precede a cualquier salida.")
+    entrada.metadatos_origen["transcripcion_segmentos"] = [
+        {
+            "indice": 1,
+            "inicio_segundos": 0.0,
+            "fin_segundos": 0.5,
+            "texto": "La revision humana precede a cualquier salida.",
+        }
+    ]
+    entrada.metadatos_origen["audio_sha256"] = "sha_audio"
+
+    fuente = normalizar_entrada_textual(entrada)
+
+    assert fuente.fragmentos_evidencia[0]["inicio_segundos"] == 0.0
+    assert fuente.fragmentos_evidencia[0]["fin_segundos"] == 0.5
+    assert fuente.fragmentos_evidencia[0]["audio_sha256"] == "sha_audio"
 
 
 def test_carga_documento_txt_y_md_de_forma_local(tmp_path):

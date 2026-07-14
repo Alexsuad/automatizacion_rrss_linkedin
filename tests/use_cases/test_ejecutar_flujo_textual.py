@@ -99,16 +99,35 @@ def test_ejecutar_flujo_textual_funciona_con_mock_adapter(tmp_path, entrada_vali
     assert salida_persistida["estado_publicabilidad"] == "no_publicable"
 
 
-def test_ejecutar_flujo_textual_rechaza_entrada_no_textual(tmp_path, entrada_valida, aprobacion_aprobada):
-    entrada_audio = entrada_valida.model_copy(update={"tipo_entrada": TipoEntrada.AUDIO})
+def test_ejecutar_flujo_textual_admite_audio_ya_transcrito_y_sanitizado(tmp_path, entrada_valida, aprobacion_aprobada):
+    entrada_audio = entrada_valida.model_copy(
+        update={
+            "tipo_entrada": TipoEntrada.AUDIO,
+            "texto_base": "La revision humana precede a cualquier salida.",
+            "metadatos_origen": {
+                "referencia_fuente": "audio_fixture",
+                "audio_sha256": "sha_audio",
+                "transcripcion_segmentos": [
+                    {
+                        "indice": 1,
+                        "inicio_segundos": 0.0,
+                        "fin_segundos": 0.8,
+                        "texto": "La revision humana precede a cualquier salida.",
+                    }
+                ],
+            },
+        }
+    )
 
-    with pytest.raises(ValueError, match="solo admite entradas de texto manual"):
-        ejecutar_flujo_textual(
-            entrada=entrada_audio,
-            adapter=MockModelAdapter(),
-            aprobacion=aprobacion_aprobada,
-            base_dir=str(tmp_path),
-        )
+    manifest = ejecutar_flujo_textual(
+        entrada=entrada_audio,
+        adapter=MockModelAdapter(),
+        aprobacion=aprobacion_aprobada,
+        base_dir=str(tmp_path),
+    )
+
+    assert manifest.id_entrada == "in_texto_001"
+    assert (tmp_path / "localdraft_in_texto_001" / "post.md").exists()
 
 
 def test_ejecutar_flujo_textual_rechaza_si_no_esta_linkedin(tmp_path, entrada_valida, aprobacion_aprobada):

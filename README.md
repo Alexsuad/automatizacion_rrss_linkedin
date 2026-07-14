@@ -42,6 +42,35 @@ Cada generación queda en `editorial_<id>/` con historial de versiones. Solo
 una versión aprobada puede convertirse en `LocalDraft`. `--input-json` sigue
 disponible para entradas estructuradas.
 
+## Audio local a candidata revisable
+
+El Incremento 2 añade entrada de audio local sin duplicar el pipeline:
+
+```bash
+uv run python -m linkedin_content_system.cli.flujo_textual \
+  --audio tests/fixtures/audio/smoke_incremento2.wav \
+  --metadata-json tests/fixtures/audio/smoke_incremento2.metadata.json \
+  --transcriber fake \
+  --perfil perfil_audio \
+  --output-dir output/audio_local
+```
+
+La entrada `--audio` valida formato y tamaño antes de transcribir, sanitiza la
+transcripción y la inyecta en el mismo ciclo editorial. El smoke determinista
+del incremento queda disponible en:
+
+```bash
+uv run python -m linkedin_content_system.cli.smoke_incremento2 \
+  --audio tests/fixtures/audio/smoke_incremento2.wav \
+  --output-dir output/smoke_incremento_2_$(date -u +%Y%m%dT%H%M%SZ) \
+  --transcriber fake
+```
+
+Para intentar un smoke real local se usa el adaptador `whisper_cpp`, que
+requiere `whisper-cli` y un modelo local informado por
+`LINKEDIN_CONTENT_TRANSCRIPTION_MODEL_PATH`. El proyecto no descarga modelos
+automáticamente ni usa servicios remotos para audio.
+
 ## Benchmark editorial local
 
 ```bash
@@ -63,6 +92,11 @@ El smoke con proveedor real queda pendiente de autorización y credencial local.
 - `LINKEDIN_CONTENT_AI_TIMEOUT_SECONDS=30`
 - `LINKEDIN_CONTENT_AI_MAX_TOKENS=280`
 - `LINKEDIN_CONTENT_PROFILE_DIR=./profiles`
+- `LINKEDIN_CONTENT_TRANSCRIPTION_ADAPTER=fake|whisper_cpp`
+- `LINKEDIN_CONTENT_TRANSCRIPTION_MODEL_PATH=/ruta/local/modelo.bin`
+- `LINKEDIN_CONTENT_TRANSCRIPTION_BINARY=whisper-cli`
+- `LINKEDIN_CONTENT_AUDIO_MAX_BYTES=2097152`
+- `LINKEDIN_CONTENT_AUDIO_MAX_SECONDS=180`
 
 ## Dependencia opcional para IA real
 

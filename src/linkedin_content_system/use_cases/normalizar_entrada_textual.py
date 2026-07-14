@@ -57,9 +57,11 @@ def normalizar_entrada_textual(entrada: EntradaContenido) -> FuenteTextualNormal
         TipoEntrada.TEXTO_MANUAL,
         TipoEntrada.DOCUMENTO_BASE,
         TipoEntrada.BORRADOR_EXISTENTE,
+        TipoEntrada.AUDIO,
+        TipoEntrada.TRANSCRIPCION,
     }:
         raise ValueError(
-            "Este flujo solo admite entradas de texto manual, documento base o borrador existente."
+            "Este flujo solo admite entradas de texto manual, documento base, borrador existente, audio o transcripción."
         )
 
     contenido = entrada.texto_base.strip()
@@ -82,11 +84,32 @@ def normalizar_entrada_textual(entrada: EntradaContenido) -> FuenteTextualNormal
     no_inferir = _lista_textual(metadata.get("no_inferir"))
     pendientes = _lista_textual(metadata.get("afirmaciones_pendientes"))
     # Los fragmentos son ubicaciones reproducibles, no una interpretación semántica.
-    fragmentos = [
-        {"id": f"{referencia}:p{indice}", "indice": indice, "texto": fragmento.strip()}
-        for indice, fragmento in enumerate(contenido.splitlines(), start=1)
-        if fragmento.strip()
-    ] or [{"id": f"{referencia}:p1", "indice": 1, "texto": contenido}]
+    segmentos = metadata.get("transcripcion_segmentos") or []
+    if isinstance(segmentos, list) and segmentos:
+        fragmentos = []
+        for indice, segmento in enumerate(segmentos, start=1):
+            if not isinstance(segmento, dict):
+                continue
+            texto_segmento = str(segmento.get("texto") or "").strip()
+            if not texto_segmento:
+                continue
+            fragmento = {
+                "id": f"{referencia}:s{indice}",
+                "indice": indice,
+                "texto": texto_segmento,
+                "audio_sha256": metadata.get("audio_sha256"),
+            }
+            if segmento.get("inicio_segundos") is not None:
+                fragmento["inicio_segundos"] = segmento.get("inicio_segundos")
+            if segmento.get("fin_segundos") is not None:
+                fragmento["fin_segundos"] = segmento.get("fin_segundos")
+            fragmentos.append(fragmento)
+    else:
+        fragmentos = [
+            {"id": f"{referencia}:p{indice}", "indice": indice, "texto": fragmento.strip()}
+            for indice, fragmento in enumerate(contenido.splitlines(), start=1)
+            if fragmento.strip()
+        ] or [{"id": f"{referencia}:p1", "indice": 1, "texto": contenido}]
 
     return FuenteTextualNormalizada(
         tipo_entrada=entrada.tipo_entrada,

@@ -12,6 +12,13 @@ from .validar_cambio_contexto import validar_cambio_contexto
 from .ejecutar_pipeline_contexto_offline import ejecutar_pipeline_contexto_offline
 from .construir_evidencia_contexto_usado import construir_evidencia_contexto_usado
 from .normalizar_entrada_textual import cargar_documento_textual, normalizar_entrada_textual
+from .preparar_entrada_audio import (
+    PreparacionEntradaAudio,
+    construir_entrada_desde_audio,
+    cargar_metadatos_autorizados,
+    sanitizar_transcripcion,
+    validar_audio_local,
+)
 from .revisar_candidata_editorial import RevisorEditorial, RevisorEditorialConservador
 from .ciclo_editorial_textual import (
     FilesystemEditorialSessionStore,
@@ -44,7 +51,11 @@ __all__ = [
     ,"solicitar_ajustes"
     ,"cargar_documento_textual"
     ,"normalizar_entrada_textual"
+    ,"PreparacionEntradaAudio"
+    ,"construir_entrada_desde_audio"
+    ,"cargar_metadatos_autorizados"
+    ,"sanitizar_transcripcion"
+    ,"validar_audio_local"
     ,"RevisorEditorial"
     ,"RevisorEditorialConservador"
 ]
-

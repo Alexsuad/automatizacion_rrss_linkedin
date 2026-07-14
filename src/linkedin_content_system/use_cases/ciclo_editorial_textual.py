@@ -62,6 +62,12 @@ _TRANSICIONES_VALIDAS = {
 }
 
 
+def metadata_or_none(metadata: dict | None, key: str):
+    if not metadata:
+        return None
+    return metadata.get(key)
+
+
 def _now(clock: Callable[[], str] | None = None) -> str:
     return clock() if clock else datetime.now(timezone.utc).isoformat()
 
@@ -178,6 +184,11 @@ def generar_borrador_pendiente(
             "elementos_pendientes": fuente.elementos_pendientes,
             "perfil_id": perfil.id_perfil,
             "perfil_estado_completitud": perfil.estado_completitud,
+            "audio_sha256": metadata_or_none(entrada.metadatos_origen, "audio_sha256"),
+            "transcripcion_modo": metadata_or_none(entrada.metadatos_origen, "transcripcion_modo"),
+            "transcripcion_modelo": metadata_or_none(entrada.metadatos_origen, "transcripcion_modelo"),
+            "transcripcion_idioma": metadata_or_none(entrada.metadatos_origen, "transcripcion_idioma"),
+            "transcripcion_sanitizada_sha256": metadata_or_none(entrada.metadatos_origen, "transcripcion_sanitizada_sha256"),
     }
     post, diagnostico, idea, auditoria = generar_candidato_auditado(entrada, adapter, resolver, channel_strategy, revisor)
     versiones = [VersionBorradorEditorial(numero=1, texto=post.texto, idea_central=idea.idea_central, ideas_candidatas=idea.ideas_candidatas, diagnostico_editorial=diagnostico, auditoria_editorial=auditoria, creada_en=_now(clock), trazabilidad_fuente=trazabilidad)]

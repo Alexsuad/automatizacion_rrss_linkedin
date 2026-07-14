@@ -1,0 +1,29 @@
+{
+  "audio_sha256": "3a184e14b81152f874eb9d5c4ac8851a8815b58d879267d40604804c5cfe1419",
+  "idioma": "es",
+  "texto": "La revision humana precede a cualquier salida. Creo que automatizar sin revisar es un error. Un mentor dijo revisar antes de publicar. La cifra 300% queda pendiente de verificacion.",
+  "segmentos": [
+    {
+      "indice": 1,
+      "inicio_segundos": 0.0,
+      "fin_segundos": 0.4,
+      "texto": "La revision humana precede a cualquier salida."
+    },
+    {
+      "indice": 2,
+      "inicio_segundos": 0.4,
+      "fin_segundos": 0.7,
+      "texto": "Creo que automatizar sin revisar es un error."
+    },
+    {
+      "indice": 3,
+      "inicio_segundos": 0.7,
+      "fin_segundos": 1.0,
+      "texto": "Un mentor dijo revisar antes de publicar. La cifra 300% queda pendiente de verificacion."
+    }
+  ],
+  "advertencias": [
+    "La cifra pronunciada debe tratarse como pendiente hasta revisión humana."
+  ],
+  "estado_completitud": "completa"
+}

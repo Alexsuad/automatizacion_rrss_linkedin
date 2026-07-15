@@ -1,4 +1,5 @@
 import json
+import subprocess
 
 import pytest
 
@@ -170,3 +171,40 @@ def test_whisper_cpp_adapter_falla_si_binario_no_esta(tmp_path):
 
     with pytest.raises(TranscriptionDependencyError, match="whisper-cli"):
         adapter.transcribir(tmp_path / "audio.wav", audio_sha256="sha", language="es")
+
+
+def test_whisper_cpp_adapter_reconstruye_texto_desde_segmentos_si_json_no_trae_text_raiz(
+    monkeypatch, tmp_path
+):
+    model = tmp_path / "modelo.bin"
+    model.write_bytes(b"fake-model")
+    adapter = WhisperCppTranscriptionAdapter(model_path=str(model), binary_path="whisper-cli")
+
+    monkeypatch.setattr("linkedin_content_system.transcription.whisper_cpp_adapter.shutil.which", lambda _: "/tmp/whisper-cli")
+
+    def fake_run(command, capture_output, text, timeout, check):
+        output_prefix = command[command.index("-of") + 1]
+        (tmp_path / "audio.wav").write_bytes(b"fake-audio")
+        Path = __import__("pathlib").Path
+        Path(f"{output_prefix}.json").write_text(
+            json.dumps(
+                {
+                    "result": {"language": "en"},
+                    "transcription": [
+                        {
+                            "offsets": {"from": 0, "to": 1200},
+                            "text": " Human review comes before any publication.",
+                        }
+                    ],
+                }
+            ),
+            encoding="utf-8",
+        )
+        return subprocess.CompletedProcess(command, 0, stdout="", stderr="")
+
+    monkeypatch.setattr("linkedin_content_system.transcription.whisper_cpp_adapter.subprocess.run", fake_run)
+
+    resultado = adapter.transcribir(tmp_path / "audio.wav", audio_sha256="sha", language="en")
+
+    assert resultado.texto_bruto == "Human review comes before any publication."
+    assert resultado.segmentos[0].texto == "Human review comes before any publication."

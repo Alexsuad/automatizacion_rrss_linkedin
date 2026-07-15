@@ -16,7 +16,7 @@ update your row when done.
 | 005  | Prueba de valor del flujo textual local con entrada realista | P1 | S | 004 | DONE |
 | 006  | Integracion IA real controlada detrás de ModelAdapter | P1 | M | 005 | DONE |
 | 007  | Validacion real del producto textual | P1 | M | 006 | IMPLEMENTED_PRODUCT_GATE_NOT_MET |
-| 008  | Recuperacion del producto completo y roadmap por incrementos | P1 | L | 006, 007 | TODO |
+| 008  | Recuperacion del producto completo y roadmap por incrementos | P1 | L | 006, 007 | IN PROGRESS |
 
 Status values: TODO | IN PROGRESS | DONE | IMPLEMENTED_PENDING_REAL_SMOKE | IMPLEMENTED_PRODUCT_GATE_NOT_MET | BLOCKED (with one-line reason) | REJECTED (with one-line rationale - finding fixed independently or approach abandoned)
 

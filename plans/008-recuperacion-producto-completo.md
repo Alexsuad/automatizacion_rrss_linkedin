@@ -22,7 +22,7 @@
 - **Depende de**: evidencia de planes 006 y 007
 - **Categoría**: direction
 - **Planned at**: commit `bb581db`, 2026-07-12
-- **Estado actual**: INCREMENTO_2_IMPLEMENTED_PENDING_REAL_TRANSCRIPTION_SMOKE
+- **Estado actual**: INCREMENTO_2_DONE
 
 ## Producto objetivo y límites
 
@@ -200,19 +200,20 @@ no mediante reglas de estilo.
 **Habilita**: fuentes de vídeo a través de audio extraído y una selección de
 piezas basada en hechos normalizados.
 
-**Resultado de ejecución (2026-07-13)**: `PASS TÉCNICO`. El Incremento 2 añade
-contrato ejecutable de audio local, validación previa de archivo, puerto de
-transcripción desacoplado y dos adaptadores: `fake_fixture` para smoke
-determinista y `whisper_cpp` como ruta real local opcional sin red. La
-transcripción se sanitiza antes de entrar al generador, conserva hash,
+**Resultado de ejecución (2026-07-15)**: `PASS REAL`. La base funcional del
+Incremento 2 quedó en el commit `cb89e2c`. El smoke determinista con
+`fake_fixture` se conserva como evidencia reproducible, y el smoke real local
+`output/smoke_incremento_2_real_20260715T122517Z/` confirmó la ruta
+`whisper_cpp` sobre CPU con `whisper.cpp version 1.9.1` y el modelo saneado
+`ggml-tiny.bin`. La transcripción real no vacía ("Human review comes before any
+publication.") se sanitiza antes de entrar al generador, conserva hash,
 segmentos y procedencia, y se normaliza en el mismo núcleo editorial del
-Incremento 1. La CLI admite `--audio`, `--transcriber`, `--idioma` y metadatos
-autorizados; el smoke determinista `output/smoke_incremento_2_20260713T123958Z`
-recorre audio -> transcripción fake -> auditoría -> selección -> aprobación
-simulada -> `ExternalDryRunPublisher`, con `publicado=false`. La suite quedó en
-`465 passed`. El smoke real local no pudo ejecutarse en este entorno porque
-faltan `whisper-cli` y `LINKEDIN_CONTENT_TRANSCRIPTION_MODEL_PATH`; por eso el
-estado operativo queda `IMPLEMENTED_PENDING_REAL_TRANSCRIPTION_SMOKE`.
+Incremento 1. La evidencia persistida identifica `whisper_cpp`, modo `real`,
+hash de audio, transcripción saneada, fuente normalizada, candidata aprobada y
+payload de `ExternalDryRunPublisher` con `publicado=false`, sin rutas absolutas
+ni publicación real. La suite local quedó en `469 passed`, `compileall` y
+`git diff --check` también pasaron. Próxima misión operativa: `Incremento 3 —
+Entrada visual, decisión visual y Brand Design`.
 
 ### Incremento 3 — Entrada visual, decisión visual y Brand Design
 

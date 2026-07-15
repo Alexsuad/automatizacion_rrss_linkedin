@@ -100,9 +100,6 @@ class WhisperCppTranscriptionAdapter(AudioTranscriber):
                     "El motor local no produjo un JSON de transcripción usable."
                 )
             data = json.loads(json_path.read_text(encoding="utf-8"))
-            texto = str(data.get("text") or "").strip()
-            if not texto:
-                raise TranscriptionResponseError("La transcripción local quedó vacía.")
             segmentos = []
             for indice, segmento in enumerate(data.get("transcription", []), start=1):
                 segmentos.append(
@@ -117,6 +114,11 @@ class WhisperCppTranscriptionAdapter(AudioTranscriber):
                         else None,
                     )
                 )
+            texto = str(data.get("text") or "").strip()
+            if not texto:
+                texto = " ".join(segmento.texto.strip() for segmento in segmentos if segmento.texto.strip()).strip()
+            if not texto:
+                raise TranscriptionResponseError("La transcripción local quedó vacía.")
             return ResultadoTranscripcion(
                 adaptador=self.nombre,
                 modo=ModoTranscripcion.REAL,
